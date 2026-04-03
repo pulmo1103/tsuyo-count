@@ -12,15 +12,21 @@ body {
   transition: 0.3s;
 }
 
-.dark {
-  background: #111;
-  color: #eee;
+body.dark{
+  background:#0f172a; /* ネイビー */
+  color:#e2e8f0;
 }
 
-button {
-  font-size: 14px;
-  padding: 6px 10px;
-  margin: 2px;
+body.dark .card{
+  background:#1e293b;
+}
+
+button{
+  font-size:16px;
+  padding:14px;
+  border-radius:10px;
+  border:none;
+  width:100%;
 }
 
 input {
@@ -31,6 +37,43 @@ canvas {
   max-width: 100%;
   height: 300px;
 }
+
+.counter-row{
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.counter-btn{
+  flex:1;
+  font-size:18px;
+  padding:16px;
+  border:none;
+  border-radius:12px;
+  font-weight:bold;
+  color:white;
+}
+
+/* 討伐 */
+.counter-btn.battle{
+  background:#ef4444;
+}
+
+/* 青箱 */
+.counter-btn.blue{
+  background:#3b82f6;
+}
+
+/* ヒヒ（金） */
+.counter-btn.hihi{
+  background:linear-gradient(135deg,#facc15,#eab308);
+  color:#222;
+}
+
+.counter-btn:active{
+  transform:scale(0.96);
+}
+
 </style>
 </head>
 
@@ -43,9 +86,11 @@ canvas {
 <br><br>
 
 <input type="date" id="dateInput"><br>
-<button onclick="addBattle(false)">通常討伐</button>
-<button onclick="addBattle(true)">青箱</button>
-<button onclick="addHihi()">ヒヒ</button>
+<div class="counter-row">
+  <button class="counter-btn battle" onclick="addBattle()">討伐 +1</button>
+  <button class="counter-btn blue" onclick="addBlue()">青箱 +1</button>
+  <button class="counter-btn hihi" onclick="addHihi()">ヒヒ +1</button>
+</div>
 
 <p id="stats"></p>
 
