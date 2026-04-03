@@ -3,180 +3,179 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ヒヒ堀り最終分析ツール</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>ヒヒイロカネ集計ツール</title>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
 body {
-    font-family:sans-serif;
-    padding:10px;
-    background:#f5f5f5;
-    max-width:500px;
-    margin:auto;
+  font-family: "Yu Gothic", "游ゴシック", sans-serif;
+  margin: 10px;
+  background: var(--bg);
+  color: var(--text);
 }
 
-.card{
-    background:#fff;
-    padding:12px;
-    margin-bottom:10px;
-    border-radius:10px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.1);
-    overflow:hidden;
+:root {
+  --bg: #ffffff;
+  --text: #000000;
+  --card: #f5f5f5;
 }
 
-input{
-    width:100%;
-    padding:10px;
-    font-size:16px;
+.dark {
+  --bg: #121212;
+  --text: #ffffff;
+  --card: #1e1e1e;
 }
 
-button{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:8px;
-    background:#4CAF50;
-    color:white;
+.container {
+  max-width: 500px;
+  margin: auto;
+}
+
+.card {
+  background: var(--card);
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 5px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  background: #4CAF50;
+  color: white;
+}
+
+canvas {
+  width: 100%;
 }
 </style>
 </head>
 
 <body>
+<div class="container">
 
-<h2>ヒヒ堀り最終ツール</h2>
+<h2>ヒヒイロカネ集計</h2>
+<button onclick="toggleDark()">🌙 ダークモード</button>
 
-<div id="inputs"></div>
-
-<button onclick="addRow()">＋追加</button>
-<button onclick="calc()">📊 集計</button>
-
-<h3>累計分析</h3>
-<div id="total"></div>
-
-<h3>期待値</h3>
 <div class="card">
-<input type="number" id="target" placeholder="例：50%">
-<input type="number" id="perHour" placeholder="時速討伐数">
-<button onclick="expect()">計算</button>
-<div id="exp"></div>
+<h3>今日</h3>
+<p>討伐: <span id="battle">0</span></p>
+<p>青箱: <span id="blue">0</span></p>
+<p>ヒヒ: <span id="hihi">0</span></p>
+
+<button onclick="count('battle')">討伐 +1</button>
+<button onclick="count('blue')">青箱 +1</button>
+<button onclick="count('hihi')">ヒヒ +1</button>
 </div>
 
-<h3>グラフ</h3>
+<div class="card">
+<h3>確率</h3>
+<p>青箱率: <span id="blueRate">0</span>%</p>
+<p>ヒヒ率(青箱): <span id="hihiBlueRate">0</span>%</p>
+</div>
+
+<div class="card">
+<h3>累計</h3>
+<p>討伐: <span id="totalBattle">0</span></p>
+<p>ヒヒ: <span id="totalHihi">0</span></p>
+<p>ヒヒ率: <span id="totalRate">0</span>%</p>
+</div>
+
+<div class="card">
+<h3>月間グラフ</h3>
 <canvas id="chart"></canvas>
+</div>
+
+</div>
 
 <script>
-function save(){
- let d=[];
- document.querySelectorAll(".input").forEach(c=>{
-  let i=c.querySelectorAll("input");
-  d.push([...Array(5)].map((_,k)=>i[k].value));
- });
- localStorage.setItem("gbf",JSON.stringify(d));
+const today = new Date().toISOString().slice(0,10);
+
+let data = JSON.parse(localStorage.getItem("hihiData")) || {
+  daily: {},
+  totalBattle: 0,
+  totalHihi: 0,
+  dark: false
+};
+
+if (!data.daily[today]) {
+  data.daily[today] = { battle:0, blue:0, hihi:0 };
 }
 
-function load(){
- JSON.parse(localStorage.getItem("gbf")||"[]").forEach(x=>addRow(x));
+function save() {
+  localStorage.setItem("hihiData", JSON.stringify(data));
 }
 
-function addRow(d=[]){
- let div=document.createElement("div");
- div.className="card input";
- div.innerHTML=`
- 日付<input type="date" value="${d[0]||''}">
- 討伐<input type="number" value="${d[1]||''}">
- 青箱<input type="number" value="${d[2]||''}">
- ヒヒ<input type="number" value="${d[3]||''}">
- 青箱ライン達成(%)<input type="number" value="${d[4]||''}">
- `;
- div.querySelectorAll("input").forEach(i=>i.oninput=save);
- inputs.appendChild(div);
+function count(type) {
+  data.daily[today][type]++;
+  if (type === "battle") data.totalBattle++;
+  if (type === "hihi") data.totalHihi++;
+  save();
+  update();
 }
 
-function sum(i){
- let s=0;
- document.querySelectorAll(".input").forEach(c=>{
-  s+=Number(c.querySelectorAll("input")[i].value||0);
- });
- return s;
+function update() {
+  let d = data.daily[today];
+
+  document.getElementById("battle").textContent = d.battle;
+  document.getElementById("blue").textContent = d.blue;
+  document.getElementById("hihi").textContent = d.hihi;
+
+  let blueRate = d.battle ? (d.blue/d.battle*100).toFixed(2) : 0;
+  let hihiBlueRate = d.blue ? (d.hihi/d.blue*100).toFixed(2) : 0;
+
+  document.getElementById("blueRate").textContent = blueRate;
+  document.getElementById("hihiBlueRate").textContent = hihiBlueRate;
+
+  let totalRate = data.totalBattle ? (data.totalHihi/data.totalBattle*100).toFixed(3) : 0;
+
+  document.getElementById("totalBattle").textContent = data.totalBattle;
+  document.getElementById("totalHihi").textContent = data.totalHihi;
+  document.getElementById("totalRate").textContent = totalRate;
+
+  drawChart();
+
+  if (data.dark) document.body.classList.add("dark");
 }
 
-let chart;
+function drawChart() {
+  const ctx = document.getElementById("chart").getContext("2d");
 
-function calc(){
- let K=sum(1),B=sum(2),H=sum(3);
+  const labels = [];
+  const values = [];
 
- let blue=B/K||0;
- let real=H/K||0;
- let theory=blue*0.02;
+  const now = new Date();
+  const month = now.toISOString().slice(0,7);
 
- let score = (real/theory||0)*100;
+  Object.keys(data.daily).forEach(date => {
+    if (date.startsWith(month)) {
+      labels.push(date.slice(8));
+      values.push(data.daily[date].hihi);
+    }
+  });
 
- let cls = score>=100?"good":"bad";
+  ctx.clearRect(0,0,400,200);
 
- total.innerHTML=
- `<div class="card">
- 討伐:${K}<br>
- 青箱率:${(blue*100).toFixed(2)}%<br>
- 実測:${(real*100).toFixed(4)}%<br>
- 理論:${(theory*100).toFixed(4)}%<br>
- <b class="${cls}">運スコア:${score.toFixed(1)}%</b>
- </div>`;
+  const max = Math.max(...values,1);
 
- // 月期待ヒヒ
- let days = document.querySelectorAll(".input").length;
- let perDay = H/days||0;
- let monthly = perDay*30;
-
- total.innerHTML+=
- `<div class="card">
- 月期待ヒヒ: 約${monthly.toFixed(2)}個
- </div>`;
-
- // グラフ
- let labels=[],data=[],line=[];
- document.querySelectorAll(".input").forEach(c=>{
-  let i=c.querySelectorAll("input");
-  if(!i[0].value||!i[1].value)return;
-
-  labels.push(i[0].value);
-  data.push((i[2].value/i[1].value*100)||0);
-  line.push(i[4].value||0);
- });
-
- if(chart)chart.destroy();
-
- chart=new Chart(chart,{
-  type:"line",
-  data:{
-   labels:labels,
-   datasets:[
-    {label:"青箱率%",data:data},
-    {label:"ライン達成%",data:line}
-   ]
-  }
- });
+  values.forEach((v,i)=>{
+    let x = i * 20;
+    let h = (v/max)*100;
+    ctx.fillRect(x, 120-h, 15, h);
+    ctx.fillText(labels[i], x, 135);
+  });
 }
 
-function expect(){
- let p=target.value/100;
- let rate=(sum(2)/sum(1))*0.02;
-
- if(!rate){exp.innerText="データ不足";return;}
-
- let n=Math.log(1-p)/Math.log(1-rate);
- let h=perHour.value? n/perHour.value:null;
-
- exp.innerText=`${Math.ceil(n)}戦`+(h?` / 約${h.toFixed(1)}時間`:"");
+function toggleDark() {
+  data.dark = !data.dark;
+  save();
+  update();
 }
 
-load();
-if(!document.querySelector(".input"))addRow();
+update();
 </script>
 
 </body>
