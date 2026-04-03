@@ -14,8 +14,6 @@ body{
   padding:10px;
 }
 
-h2{margin:5px 0;}
-
 button{
   width:32%;
   padding:12px;
@@ -51,8 +49,8 @@ button{
 <div class="card">
   <div id="today"></div>
   <div id="since"></div>
-  <div id="sinceExtra"></div>
-  <div id="hihiPos"></div>
+  <div id="sinceDetail"></div>
+  <div id="hihiPosition"></div>
 </div>
 
 <div class="card">
@@ -60,7 +58,7 @@ button{
 </div>
 
 <div class="card">
-  <h3>日別（直近7日）</h3>
+  <h3>日別（7日）</h3>
   <div id="daily"></div>
 </div>
 
@@ -120,7 +118,7 @@ function addHihi(){
   init();
   data[getToday()].hihi++;
 
-  let since = calcSinceLastHihi();
+  const since = calcSinceLastHihi();
   hihiHistory.push(since.sinceKill + 1);
 
   addLog("hihi");
@@ -150,9 +148,11 @@ function calcSinceLastHihi(){
   };
 }
 
-// ===== ヒヒ履歴 =====
-function getHihiText(){
-  if(hihiHistory.length===0) return "ヒヒ履歴なし";
+// ===== ヒヒ位置 =====
+function renderHihiPosition(){
+  if(hihiHistory.length===0){
+    return "ヒヒ履歴なし";
+  }
 
   let last = hihiHistory[hihiHistory.length-1];
   let avg = (hihiHistory.reduce((a,b)=>a+b,0)/hihiHistory.length).toFixed(1);
@@ -162,15 +162,12 @@ function getHihiText(){
 
 // ===== 日別 =====
 function renderDaily(){
-
   let dates = Object.keys(data).sort().reverse().slice(0,7);
-
   let html="";
   dates.forEach(d=>{
     let v=data[d];
     html += `${d}：${v.kill}戦 / 青${v.blue} / ヒヒ${v.hihi}<br>`;
   });
-
   document.getElementById("daily").innerHTML = html;
 }
 
@@ -203,6 +200,7 @@ let chart;
 function drawChart(){
 
   let labels = Object.keys(data).sort();
+
   let kill = labels.map(d=>data[d].kill);
   let blue = labels.map(d=>data[d].blue);
   let hihi = labels.map(d=>data[d].hihi);
@@ -219,6 +217,7 @@ function drawChart(){
           type:"bar",
           label:"討伐",
           data:kill,
+          yAxisID:"y",
           backgroundColor:"rgba(255,120,120,0.7)",
           barThickness:8
         },
@@ -226,23 +225,39 @@ function drawChart(){
           type:"line",
           label:"青箱",
           data:blue,
+          yAxisID:"y1",
           borderColor:"#4dabf7",
-          borderWidth:2
+          borderWidth:2,
+          tension:0.3
         },
         {
           type:"line",
           label:"ヒヒ",
           data:hihi,
+          yAxisID:"y1",
           borderColor:"gold",
           borderWidth:3,
-          pointRadius:5
+          pointRadius:5,
+          tension:0.3
         }
       ]
     },
     options:{
       responsive:true,
       plugins:{legend:{display:true}},
-      scales:{y:{beginAtZero:true}}
+      scales:{
+        y:{
+          position:"left",
+          beginAtZero:true,
+          title:{display:true,text:"討伐数"}
+        },
+        y1:{
+          position:"right",
+          beginAtZero:true,
+          grid:{drawOnChartArea:false},
+          title:{display:true,text:"青箱 / ヒヒ"}
+        }
+      }
     }
   });
 }
@@ -261,11 +276,11 @@ function update(){
   document.getElementById("since").textContent =
     `前回ヒヒから：${since.sinceKill}戦`;
 
-  document.getElementById("sinceExtra").textContent =
+  document.getElementById("sinceDetail").textContent =
     `青箱：${since.sinceBlue}（${since.sinceBlueRate}%）`;
 
-  document.getElementById("hihiPos").textContent =
-    getHihiText();
+  document.getElementById("hihiPosition").textContent =
+    renderHihiPosition();
 
   renderDaily();
   renderMonthly();
