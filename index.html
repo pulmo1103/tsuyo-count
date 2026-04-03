@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>つよばはヒヒ管理ツール</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 body {
   font-family: "Yu Gothic", "游ゴシック", sans-serif;
@@ -21,7 +19,7 @@ body.light button { background:#ddd; color:black; }
 .card { background:#13263d; padding:10px; border-radius:12px; margin-bottom:10px; }
 body.light .card { background:#fff; }
 
-.counter{ font-size:20px; }
+.counter input { width:60px; font-size:18px; text-align:center; }
 ul{padding-left:20px;}
 .star::after { content:"★"; position:absolute; color:white; opacity:0; filter:blur(4px); animation:sparkle 2s infinite; }
 @keyframes sparkle {0%,85%,100%{opacity:0;}90%{opacity:1;}}
@@ -47,12 +45,18 @@ canvas{ max-height:50vh; }
 
 <div class="card">
   <h3>今日のカウンター</h3>
-  <div class="counter">討伐: <span id="kill">0</span></div>
-  <div class="counter">青箱: <span id="blue">0</span></div>
-  <div class="counter">ヒヒ: <span id="hihi">0</span></div>
-  <button onclick="add('kill')">討伐+1</button>
-  <button onclick="add('blue')">青箱+1</button>
-  <button onclick="add('hihi')">ヒヒ+1</button>
+  <div class="counter">討伐: 
+    <input type="number" id="kill" value="0" onchange="updateCount('kill', this.value)">
+    <button onclick="add('kill')">+1</button>
+  </div>
+  <div class="counter">青箱: 
+    <input type="number" id="blue" value="0" onchange="updateCount('blue', this.value)">
+    <button onclick="add('blue')">+1</button>
+  </div>
+  <div class="counter">ヒヒ: 
+    <input type="number" id="hihi" value="0" onchange="updateCount('hihi', this.value)">
+    <button onclick="add('hihi')">+1</button>
+  </div>
 </div>
 
 <div class="card">
@@ -86,11 +90,22 @@ function getSelectedDate(){
 
 function save(){ localStorage.setItem("data", JSON.stringify(data)); }
 
+// ボタン +1用
 function add(type){
   let date = getSelectedDate();
   if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
-  data[date][type]++;
+  data[date][type] = Number(data[date][type] || 0) + 1;
   if(type==="hihi") showHihi();
+  save();
+  update();
+  renderChart();
+}
+
+// 直接入力用
+function updateCount(type, val){
+  let date = getSelectedDate();
+  if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
+  data[date][type] = Math.max(0, Number(val) || 0); // NaN対策 + マイナス防止
   save();
   update();
   renderChart();
@@ -115,20 +130,27 @@ function update(){
   let date = getSelectedDate();
   if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
 
-  document.getElementById("kill").innerText = data[date].kill;
-  document.getElementById("blue").innerText = data[date].blue;
-  document.getElementById("hihi").innerText = data[date].hihi;
+  // 数値保証
+  let today = data[date];
+  today.kill = Number(today.kill || 0);
+  today.blue = Number(today.blue || 0);
+  today.hihi = Number(today.hihi || 0);
 
-  // 全体統計
+  // inputに反映
+  document.getElementById("kill").value = today.kill;
+  document.getElementById("blue").value = today.blue;
+  document.getElementById("hihi").value = today.hihi;
+
   let totalKill=0,totalBlue=0,totalHihi=0,streak=0,lastHihi=null;
   let historyList=[];
-  let keys = Object.keys(data).sort().slice(-50); //直近50日
+  let keys = Object.keys(data).sort().slice(-50);
 
   keys.forEach(d=>{
     let v=data[d];
-    totalKill+=v.kill; totalBlue+=v.blue; totalHihi+=v.hihi;
-    if(v.hihi>0){ lastHihi=d; streak=0; } else { streak+=v.kill; }
-    historyList.push(`<li>${d}: 討伐${v.kill}, 青箱${v.blue}, ヒヒ${v.hihi}</li>`);
+    let kill=Number(v.kill||0), blue=Number(v.blue||0), hihi=Number(v.hihi||0);
+    totalKill+=kill; totalBlue+=blue; totalHihi+=hihi;
+    if(hihi>0){ lastHihi=d; streak=0; } else { streak+=kill; }
+    historyList.push(`<li>${d}: 討伐${kill}, 青箱${blue}, ヒヒ${hihi}</li>`);
   });
 
   document.getElementById("history").innerHTML = historyList.join("");
@@ -142,7 +164,7 @@ function update(){
 
   document.getElementById("stats").innerHTML=`
     <b>日別統計 (${date})</b><br>
-    討伐: ${data[date].kill} / 青箱: ${data[date].blue} / ヒヒ: ${data[date].hihi}<br><br>
+    討伐: ${today.kill} / 青箱: ${today.blue} / ヒヒ: ${today.hihi}<br><br>
     <b>全体統計</b><br>
     青箱率: ${blueRate.toFixed(2)}%<br>
     ヒヒ率: ${hihiRate.toFixed(2)}%<br>
@@ -159,10 +181,11 @@ function renderChart(){
   Object.keys(data).sort().forEach(d=>{
     if(d.startsWith(month)){
       let v=data[d];
+      let kill=Number(v.kill||0), blue=Number(v.blue||0), hihi=Number(v.hihi||0);
       labels.push(d);
-      hihiRates.push(v.blue ? v.hihi/v.blue*100 : 0);
-      blueRates.push(v.kill ? v.blue/v.kill*100 : 0);
-      pointStyles.push(v.hihi>0 ? "star" : "circle");
+      hihiRates.push(blue ? hihi/blue*100 : 0);
+      blueRates.push(kill ? blue/kill*100 : 0);
+      pointStyles.push(hihi>0 ? "star" : "circle");
     }
   });
   if(chart) chart.destroy();
