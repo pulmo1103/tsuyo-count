@@ -10,117 +10,54 @@
 <style>
 body {
   font-family: "Yu Gothic", "游ゴシック", sans-serif;
-  margin: 0;
-  padding: 10px;
-  background: #0b1a2b;
-  color: #fff;
+  margin:0; padding:10px;
+  background:#0b1a2b; color:#fff;
 }
+body.light { background:#f5f5f5; color:#000; }
 
-body.light {
-  background: #f5f5f5;
-  color: #000;
-}
+button { padding:12px; margin:5px; border-radius:10px; border:none; font-size:16px; background:#1e3a5f; color:white; }
+body.light button { background:#ddd; color:black; }
 
-button {
-  padding: 12px;
-  margin: 5px;
-  border-radius: 10px;
-  border: none;
-  font-size: 16px;
-  background: #1e3a5f;
-  color: white;
-}
+.card { background:#13263d; padding:10px; border-radius:12px; margin-bottom:10px; }
+body.light .card { background:#fff; }
 
-body.light button {
-  background: #ddd;
-  color: black;
-}
+.counter{ font-size:20px; }
+ul{padding-left:20px;}
+.star::after { content:"★"; position:absolute; color:white; opacity:0; filter:blur(4px); animation:sparkle 2s infinite; }
+@keyframes sparkle {0%,85%,100%{opacity:0;}90%{opacity:1;}}
 
-.card {
-  background: #13263d;
-  padding: 10px;
-  border-radius: 12px;
-  margin-bottom: 10px;
-}
+.hihi{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0); font-size:80px; color:gold; animation:hihiAnim 1s forwards; }
+@keyframes hihiAnim { 0%{transform:translate(-50%,-50%) scale(0);opacity:0;}50%{transform:translate(-50%,-50%) scale(1.5);opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;} }
 
-body.light .card {
-  background: #fff;
-}
+.flash{ position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); pointer-events:none; animation:flashAnim 0.4s ease; }
+@keyframes flashAnim { from{opacity:1;} to{opacity:0;} }
 
-.counter {
-  font-size: 20px;
-}
-
-/* ★ピカ */
-.star::after {
-  content:"★";
-  position:absolute;
-  color:white;
-  opacity:0;
-  filter:blur(4px);
-  animation:sparkle 2s infinite;
-}
-
-@keyframes sparkle {
-  0%,85%,100%{opacity:0;}
-  90%{opacity:1;}
-}
-
-/* ヒヒ演出 */
-.hihi {
-  position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%) scale(0);
-  font-size:80px;
-  color:gold;
-  animation:hihiAnim 1s forwards;
-}
-
-@keyframes hihiAnim {
-  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
-  50%{transform:translate(-50%,-50%) scale(1.5);opacity:1;}
-  100%{transform:translate(-50%,-50%) scale(1);opacity:0;}
-}
-
-/* 金フラッシュ */
-.flash {
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%);
-  pointer-events:none;
-  animation:flashAnim 0.4s ease;
-}
-
-@keyframes flashAnim {
-  from{opacity:1;}
-  to{opacity:0;}
-}
-
-canvas {
-  max-height: 50vh;
-}
+canvas{ max-height:50vh; }
 </style>
 </head>
-
 <body>
 
 <h2>つよばはヒヒ管理</h2>
-
 <button onclick="toggleTheme()">ダーク/ライト切替</button>
+
+<div class="card">
+  <h3>入力日</h3>
+  <input type="date" id="inputDate">
+</div>
 
 <div class="card">
   <h3>今日のカウンター</h3>
   <div class="counter">討伐: <span id="kill">0</span></div>
   <div class="counter">青箱: <span id="blue">0</span></div>
   <div class="counter">ヒヒ: <span id="hihi">0</span></div>
-
   <button onclick="add('kill')">討伐+1</button>
   <button onclick="add('blue')">青箱+1</button>
   <button onclick="add('hihi')">ヒヒ+1</button>
+</div>
+
+<div class="card">
+  <h3>日別統計ログ (直近50日)</h3>
+  <ul id="history"></ul>
 </div>
 
 <div class="card">
@@ -141,16 +78,18 @@ canvas {
 <script>
 const DROP_RATE = 0.02;
 let data = JSON.parse(localStorage.getItem("data") || "{}");
-let today = new Date().toISOString().slice(0,10);
 
-if (!data[today]) data[today] = {kill:0, blue:0, hihi:0};
-
-function save(){
-  localStorage.setItem("data", JSON.stringify(data));
+function getSelectedDate(){
+  const val = document.getElementById("inputDate").value;
+  return val ? val : new Date().toISOString().slice(0,10);
 }
 
+function save(){ localStorage.setItem("data", JSON.stringify(data)); }
+
 function add(type){
-  data[today][type]++;
+  let date = getSelectedDate();
+  if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
+  data[date][type]++;
   if(type==="hihi") showHihi();
   save();
   update();
@@ -173,33 +112,38 @@ function flashGold(){
 }
 
 function update(){
-  document.getElementById("kill").innerText=data[today].kill;
-  document.getElementById("blue").innerText=data[today].blue;
-  document.getElementById("hihi").innerText=data[today].hihi;
+  let date = getSelectedDate();
+  if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
 
-  let totalKill=0,totalBlue=0,totalHihi=0,streak=0;
+  document.getElementById("kill").innerText = data[date].kill;
+  document.getElementById("blue").innerText = data[date].blue;
+  document.getElementById("hihi").innerText = data[date].hihi;
 
-  Object.keys(data).sort().forEach(d=>{
-    totalKill+=data[d].kill;
-    totalBlue+=data[d].blue;
-    totalHihi+=data[d].hihi;
-    if(data[d].hihi>0){
-      streak=0;
-    }else{
-      streak+=data[d].kill;
-    }
+  // 全体統計
+  let totalKill=0,totalBlue=0,totalHihi=0,streak=0,lastHihi=null;
+  let historyList=[];
+  let keys = Object.keys(data).sort().slice(-50); //直近50日
+
+  keys.forEach(d=>{
+    let v=data[d];
+    totalKill+=v.kill; totalBlue+=v.blue; totalHihi+=v.hihi;
+    if(v.hihi>0){ lastHihi=d; streak=0; } else { streak+=v.kill; }
+    historyList.push(`<li>${d}: 討伐${v.kill}, 青箱${v.blue}, ヒヒ${v.hihi}</li>`);
   });
+
+  document.getElementById("history").innerHTML = historyList.join("");
 
   let blueRate = totalBlue/totalKill*100 || 0;
   let hihiRate = totalHihi/totalBlue*100 || 0;
-
   let expected = totalBlue*DROP_RATE;
   let diff = totalHihi - expected;
   let judge = diff>0 ? "神" : "地獄";
-
   if(diff>0) flashGold();
 
   document.getElementById("stats").innerHTML=`
+    <b>日別統計 (${date})</b><br>
+    討伐: ${data[date].kill} / 青箱: ${data[date].blue} / ヒヒ: ${data[date].hihi}<br><br>
+    <b>全体統計</b><br>
     青箱率: ${blueRate.toFixed(2)}%<br>
     ヒヒ率: ${hihiRate.toFixed(2)}%<br>
     前回ヒヒから: ${streak}戦<br>
@@ -208,56 +152,34 @@ function update(){
 }
 
 let chart;
-
 function renderChart(){
   const ctx=document.getElementById("chart");
-  const month=document.getElementById("month").value || today.slice(0,7);
-
+  const month=document.getElementById("month").value || new Date().toISOString().slice(0,7);
   let labels=[],hihiRates=[],blueRates=[],pointStyles=[];
-
   Object.keys(data).sort().forEach(d=>{
     if(d.startsWith(month)){
       let v=data[d];
       labels.push(d);
-
-      let hihiRate = v.blue ? v.hihi/v.blue*100 : 0;
-      let blueRate = v.kill ? v.blue/v.kill*100 : 0;
-
-      hihiRates.push(hihiRate);
-      blueRates.push(blueRate);
-
+      hihiRates.push(v.blue ? v.hihi/v.blue*100 : 0);
+      blueRates.push(v.kill ? v.blue/v.kill*100 : 0);
       pointStyles.push(v.hihi>0 ? "star" : "circle");
     }
   });
-
   if(chart) chart.destroy();
-
   chart=new Chart(ctx,{
     type:"line",
     data:{
       labels:labels,
       datasets:[
-      {
-        label:"ヒヒ率%",
-        data:hihiRates,
-        pointStyle:pointStyles,
-        pointRadius:6,
-        yAxisID:'y'
-      },
-      {
-        label:"青箱率%",
-        data:blueRates,
-        yAxisID:'y1'
-      }]
+        {label:"ヒヒ率%", data:hihiRates, pointStyle:pointStyles, pointRadius:6, yAxisID:'y'},
+        {label:"青箱率%", data:blueRates, yAxisID:'y1'}
+      ]
     },
     options:{
       animation:{duration:300},
       scales:{
         y:{position:"left"},
-        y1:{
-          position:"right",
-          grid:{drawOnChartArea:false}
-        }
+        y1:{position:"right", grid:{drawOnChartArea:false}}
       }
     }
   });
@@ -276,13 +198,10 @@ function downloadCSV(){
   a.click();
 }
 
-function toggleTheme(){
-  document.body.classList.toggle("light");
-}
+function toggleTheme(){ document.body.classList.toggle("light"); }
 
-update();
-renderChart();
+document.getElementById("inputDate").value = new Date().toISOString().slice(0,10);
+update(); renderChart();
 </script>
-
 </body>
 </html>
