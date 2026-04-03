@@ -85,6 +85,10 @@ canvas {
 
 <br><br>
 
+<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+  <input type="checkbox" id="pastMode">
+  過去日モード
+</label>
 <input type="date" id="dateInput"><br>
 <div class="counter-row">
   <button class="counter-btn battle" onclick="addBattle()">討伐 +1</button>
@@ -129,16 +133,19 @@ function toggleTheme() {
 function addBattle(){
   logs.push({date:getToday(), blue:0, hihi:0});
   save(); updateAll();
+  setToday();
 }
 
 function addBlue(){
   logs.push({date:getToday(), blue:1, hihi:0});
   save(); updateAll();
+  setToday();
 }
 
 function addHihi(){
   logs.push({date:getToday(), blue:1, hihi:1});
   save(); updateAll();
+  setToday();
 }
 
 function render() {
@@ -296,6 +303,23 @@ function drawChart() {
     }
   });
 }
+
+function isPastMode(){
+  return document.getElementById("pastMode").checked;
+}
+
+function setToday(){
+  if(!isPastMode()){
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("date").value = today;
+  }
+}
+
+window.addEventListener("load", function(){
+  load();
+  updateAll();
+  setToday();
+});
 
 render();
 </script>
