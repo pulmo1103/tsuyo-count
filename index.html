@@ -193,38 +193,64 @@ function drawChart() {
   if(chart) chart.destroy();
 
   chart = new Chart(document.getElementById("chart"), {
-    type: "line",
     data: {
       labels,
       datasets: [
         {
+          type: "bar",
           label: "討伐数",
           data: battles,
-          yAxisID: "y"
+          yAxisID: "y",
+          backgroundColor: "rgba(255,80,80,0.7)",
+          barThickness: 6
         },
         {
+          type: "line",
           label: "青箱",
           data: blue,
-          yAxisID: "y1"
+          yAxisID: "y1",
+          borderColor: "#3399ff",
+          backgroundColor: "#3399ff",
+          tension: 0.3,
+          pointRadius: 3
         },
         {
+          type: "line",
           label: "ヒヒ",
           data: hihi,
-          yAxisID: "y1"
+          yAxisID: "y1",
+          borderColor: "gold",
+          backgroundColor: "gold",
+          tension: 0.3,
+          pointRadius: 5
         }
       ]
     },
     options: {
       responsive: true,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
       scales: {
         y: {
           position: "left",
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "討伐数"
+          }
         },
         y1: {
           position: "right",
           beginAtZero: true,
-          grid: { drawOnChartArea: false }
+          grid: {
+            drawOnChartArea: false
+          },
+          title: {
+            display: true,
+            text: "青箱 / ヒヒ"
+          }
         }
       }
     }
