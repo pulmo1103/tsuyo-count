@@ -2,42 +2,35 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ヒヒ掘り記録</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>つよばはカウンター</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-  font-family: sans-serif;
-  margin: 10px;
-  transition: 0.3s;
+body{
+  font-family:"Yu Gothic",sans-serif;
+  margin:10px;
+  background:#f1f5f9;
 }
 
 body.dark{
-  background:#0f172a; /* ネイビー */
+  background:#0f172a;
   color:#e2e8f0;
+}
+
+.card{
+  background:white;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:10px;
 }
 
 body.dark .card{
   background:#1e293b;
 }
 
-button{
-  font-size:16px;
-  padding:14px;
-  border-radius:10px;
-  border:none;
-  width:100%;
-}
-
-input {
-  margin: 2px;
-}
-
-canvas {
-  max-width: 100%;
-  height: 300px;
-}
-
+/* ボタン */
 .counter-row{
   display:flex;
   gap:10px;
@@ -54,17 +47,8 @@ canvas {
   color:white;
 }
 
-/* 討伐 */
-.counter-btn.battle{
-  background:#ef4444;
-}
-
-/* 青箱 */
-.counter-btn.blue{
-  background:#3b82f6;
-}
-
-/* ヒヒ（金） */
+.counter-btn.battle{background:#ef4444;}
+.counter-btn.blue{background:#3b82f6;}
 .counter-btn.hihi{
   background:linear-gradient(135deg,#facc15,#eab308);
   color:#222;
@@ -73,235 +57,49 @@ canvas {
 .counter-btn:active{
   transform:scale(0.96);
 }
-
 </style>
 </head>
 
 <body>
 
-<h2>ヒヒ掘り記録</h2>
+<h2>つよばは管理</h2>
 
-<button onclick="toggleTheme()">ライト/ダーク</button>
+<div class="card">
 
-<br><br>
+<input type="date" id="date">
 
-<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+<label style="display:flex;align-items:center;gap:8px;margin-top:5px;">
   <input type="checkbox" id="pastMode">
   過去日モード
 </label>
-<input type="date" id="dateInput"><br>
-<div class="counter-row">
-  <button class="counter-btn battle" onclick="addBattle()">討伐 +1</button>
-  <button class="counter-btn blue" onclick="addBlue()">青箱 +1</button>
-  <button class="counter-btn hihi" onclick="addHihi()">ヒヒ +1</button>
+
+<button onclick="toggleDark()">ダーク切替</button>
+
 </div>
 
-<p id="stats"></p>
+<div class="card">
 
-<h3>前回ヒヒから</h3>
-<p id="sinceHihi"></p>
+<div class="counter-row">
+  <button class="counter-btn battle" onclick="addBattle()">討伐</button>
+  <button class="counter-btn blue" onclick="addBlue()">青箱</button>
+  <button class="counter-btn hihi" onclick="addHihi()">ヒヒ</button>
+</div>
 
-<h3>日別（直近7日）</h3>
-<p id="daily"></p>
+</div>
 
-<h3>月別</h3>
-<p id="monthly"></p>
-
+<div class="card">
 <canvas id="chart"></canvas>
+</div>
+
+<div class="card" id="stats"></div>
 
 <script>
-let logs = JSON.parse(localStorage.getItem("logs") || "[]");
-let theme = localStorage.getItem("theme") || "light";
-
-if(theme === "dark") document.body.classList.add("dark");
-
-function save() {
-  localStorage.setItem("logs", JSON.stringify(logs));
-}
-
-function getDate() {
-  return document.getElementById("dateInput").value || new Date().toISOString().slice(0,10);
-}
-
-function toggleTheme() {
-  document.body.classList.toggle("dark");
-  localStorage.setItem("theme",
-    document.body.classList.contains("dark") ? "dark" : "light"
-  );
-}
-
-function addBattle(){
-  logs.push({date:getToday(), blue:0, hihi:0});
-  save(); updateAll();
-  setToday();
-}
-
-function addBlue(){
-  logs.push({date:getToday(), blue:1, hihi:0});
-  save(); updateAll();
-  setToday();
-}
-
-function addHihi(){
-  logs.push({date:getToday(), blue:1, hihi:1});
-  save(); updateAll();
-  setToday();
-}
-
-function render() {
-  let total = logs.length;
-  let blue = logs.filter(l => l.blue).length;
-  let hihi = logs.filter(l => l.hihi).length;
-
-  document.getElementById("stats").innerText =
-    `討伐:${total} 青箱:${blue} ヒヒ:${hihi}`;
-
-  renderSinceHihi();
-  renderDaily();
-  renderMonthly();
-  drawChart();
-}
-
-function renderSinceHihi() {
-  let last = logs.map((l,i)=>l.hihi?i:-1).filter(i=>i>=0).pop();
-
-  let target = last == null ? logs : logs.slice(last+1);
-
-  let battles = target.length;
-  let blue = target.filter(l=>l.blue).length;
-
-  let totalBlue = logs.filter(l=>l.blue).length;
-
-  let percent = battles ? (blue/battles*100).toFixed(1) : 0;
-  let totalPercent = logs.length ? (totalBlue/logs.length*100).toFixed(1) : 0;
-
-  document.getElementById("sinceHihi").innerText =
-`戦闘数:${battles}
-青箱:${blue}
-青箱率:${percent}%
-全体青箱率:${totalPercent}%`;
-}
-
-function renderDaily() {
-  let map = {};
-
-  logs.forEach(l=>{
-    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
-    map[l.date].b++;
-    if(l.blue) map[l.date].blue++;
-    if(l.hihi) map[l.date].h++;
-  });
-
-  let keys = Object.keys(map).sort().slice(-7);
-
-  document.getElementById("daily").innerText =
-    keys.map(d=>{
-      let v=map[d];
-      return `${d} 討伐:${v.b} 青:${v.blue} ヒヒ:${v.h}`;
-    }).join("\n");
-}
-
-function renderMonthly() {
-  let map = {};
-
-  logs.forEach(l=>{
-    let m = l.date.slice(0,7);
-    if(!map[m]) map[m]={b:0,blue:0,h:0};
-    map[m].b++;
-    if(l.blue) map[m].blue++;
-    if(l.hihi) map[m].h++;
-  });
-
-  document.getElementById("monthly").innerText =
-    Object.keys(map).sort().map(m=>{
-      let v=map[m];
-      return `${m} 討伐:${v.b} 青:${v.blue} ヒヒ:${v.h}`;
-    }).join("\n");
-}
-
+let logs = JSON.parse(localStorage.getItem("logs")||"[]");
 let chart;
 
-function drawChart() {
-  let map = {};
-
-  logs.forEach(l=>{
-    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
-    map[l.date].b++;
-    if(l.blue) map[l.date].blue++;
-    if(l.hihi) map[l.date].h++;
-  });
-
-  let labels = Object.keys(map).sort();
-
-  let battles = labels.map(d=>map[d].b);
-  let blue = labels.map(d=>map[d].blue);
-  let hihi = labels.map(d=>map[d].h);
-
-  if(chart) chart.destroy();
-
-  chart = new Chart(document.getElementById("chart"), {
-    data: {
-      labels,
-      datasets: [
-        {
-          type: "bar",
-          label: "討伐数",
-          data: battles,
-          yAxisID: "y",
-          backgroundColor: "rgba(255,80,80,0.7)",
-          barThickness: 6
-        },
-        {
-          type: "line",
-          label: "青箱",
-          data: blue,
-          yAxisID: "y1",
-          borderColor: "#3399ff",
-          backgroundColor: "#3399ff",
-          tension: 0.3,
-          pointRadius: 3
-        },
-        {
-          type: "line",
-          label: "ヒヒ",
-          data: hihi,
-          yAxisID: "y1",
-          borderColor: "gold",
-          backgroundColor: "gold",
-          tension: 0.3,
-          pointRadius: 5
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
-      scales: {
-        y: {
-          position: "left",
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: "討伐数"
-          }
-        },
-        y1: {
-          position: "right",
-          beginAtZero: true,
-          grid: {
-            drawOnChartArea: false
-          },
-          title: {
-            display: true,
-            text: "青箱 / ヒヒ"
-          }
-        }
-      }
-    }
-  });
+// ===== 日付 =====
+function getToday(){
+  return document.getElementById("date").value;
 }
 
 function isPastMode(){
@@ -315,13 +113,120 @@ function setToday(){
   }
 }
 
-window.addEventListener("load", function(){
-  load();
-  updateAll();
-  setToday();
-});
+// ===== 保存 =====
+function save(){
+  localStorage.setItem("logs",JSON.stringify(logs));
+}
 
-render();
+// ===== 追加 =====
+function addBattle(){
+  logs.push({date:getToday(),blue:0,hihi:0});
+  save(); updateAll(); setToday();
+}
+
+function addBlue(){
+  logs.push({date:getToday(),blue:1,hihi:0});
+  save(); updateAll(); setToday();
+}
+
+function addHihi(){
+  logs.push({date:getToday(),blue:1,hihi:1});
+  save(); updateAll(); setToday();
+}
+
+// ===== 集計 =====
+function updateStats(){
+  let totalB=logs.length;
+  let totalBlue=logs.filter(l=>l.blue).length;
+  let totalHihi=logs.filter(l=>l.hihi).length;
+
+  document.getElementById("stats").innerHTML=`
+  討伐:${totalB}<br>
+  青箱:${totalBlue}<br>
+  ヒヒ:${totalHihi}
+  `;
+}
+
+// ===== グラフ =====
+function drawChart(){
+
+  let map={};
+
+  logs.forEach(l=>{
+    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
+    map[l.date].b++;
+    if(l.blue) map[l.date].blue++;
+    if(l.hihi) map[l.date].h++;
+  });
+
+  let labels=Object.keys(map).sort();
+
+  let b=labels.map(d=>map[d].b);
+  let blue=labels.map(d=>map[d].blue);
+  let h=labels.map(d=>map[d].h);
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(document.getElementById("chart"),{
+    data:{
+      labels:labels,
+      datasets:[
+        {
+          type:"bar",
+          label:"討伐",
+          data:b,
+          yAxisID:"y",
+          backgroundColor:"rgba(255,80,80,0.7)",
+          barThickness:6
+        },
+        {
+          type:"line",
+          label:"青箱",
+          data:blue,
+          yAxisID:"y1",
+          borderColor:"#3399ff",
+          tension:0.3
+        },
+        {
+          type:"line",
+          label:"ヒヒ",
+          data:h,
+          yAxisID:"y1",
+          borderColor:"gold",
+          tension:0.3
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        y:{position:"left",beginAtZero:true},
+        y1:{
+          position:"right",
+          beginAtZero:true,
+          grid:{drawOnChartArea:false}
+        }
+      }
+    }
+  });
+}
+
+// ===== ダーク =====
+function toggleDark(){
+  document.body.classList.toggle("dark");
+}
+
+// ===== 更新 =====
+function updateAll(){
+  updateStats();
+  drawChart();
+}
+
+// ===== 起動時 =====
+window.addEventListener("load",function(){
+  setToday();
+  updateAll();
+});
 </script>
 
 </body>
