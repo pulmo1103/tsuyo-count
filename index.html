@@ -69,29 +69,6 @@ canvas{
   50%{transform:translate(-50%,-50%) scale(1.6);opacity:1;}
   100%{transform:translate(-50%,-50%) scale(1);opacity:0;}
 }
-
-.flash{
-  position:fixed;
-  top:0;left:0;width:100%;height:100%;
-  background:radial-gradient(circle,rgba(255,215,0,0.5),transparent);
-  animation:flash 0.3s;
-}
-@keyframes flash{from{opacity:1;}to{opacity:0;}}
-
-.particle{
-  position:fixed;
-  width:6px;height:6px;
-  background:gold;
-  border-radius:50%;
-  pointer-events:none;
-  animation:particle 0.8s ease-out forwards;
-}
-@keyframes particle{
-  to{
-    transform:translate(var(--x),var(--y));
-    opacity:0;
-  }
-}
 </style>
 </head>
 
@@ -186,11 +163,9 @@ function getSinceLastHihi(){
 }
 
 function renderStats(){
-  // 前回ヒヒ
   document.getElementById("sinceHihi").textContent =
     getSinceLastHihi()+"戦";
 
-  // 直近7日
   let daily=document.getElementById("dailyStats");
   daily.innerHTML="";
   Object.keys(data).sort().reverse().slice(0,7).forEach(d=>{
@@ -198,7 +173,6 @@ function renderStats(){
     daily.innerHTML+=`${d}｜討伐:${v.kill} 青箱:${v.blue} ヒヒ:${v.hihi}<br>`;
   });
 
-  // 月別
   let m={}, monthly=document.getElementById("monthlyStats");
   monthly.innerHTML="";
   Object.keys(data).forEach(d=>{
@@ -248,13 +222,31 @@ function renderChart(){
     data:{
       labels,
       datasets:[
-        {type:"bar",label:"討伐",data:kills,barThickness:6},
-        {type:"line",label:"青箱",data:blues,tension:0.3},
+        {
+          type:"bar",
+          label:"討伐",
+          data:kills,
+          backgroundColor:"rgba(255,99,132,0.75)",
+          borderRadius:4,
+          barThickness:6
+        },
+        {
+          type:"line",
+          label:"青箱",
+          data:blues,
+          borderColor:"rgba(59,130,246,1)",
+          backgroundColor:"rgba(59,130,246,0.2)",
+          tension:0.3,
+          borderWidth:2,
+          pointRadius:2
+        },
         {
           type:"line",
           label:"ヒヒ",
           data:hihis,
-          borderColor:"orange",
+          borderColor:"rgba(255,215,0,1)",
+          borderWidth:3,
+          tension:0,
           pointRadius:(ctx)=>ctx.raw>0?8:0,
           pointStyle:(ctx)=>ctx.raw>0?"star":"circle"
         }
@@ -263,7 +255,18 @@ function renderChart(){
     options:{
       responsive:true,
       plugins:{ tooltip:{enabled:false} },
-      scales:{ y:{beginAtZero:true,grace:"10%"} }
+      scales:{
+        x:{
+          ticks:{ color:"#ccc" },
+          grid:{ color:"rgba(255,255,255,0.05)" }
+        },
+        y:{
+          beginAtZero:true,
+          grace:"10%",
+          ticks:{ color:"#ccc" },
+          grid:{ color:"rgba(255,255,255,0.08)" }
+        }
+      }
     },
     plugins:[{
       id:"bgColor",
