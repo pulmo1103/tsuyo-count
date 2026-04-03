@@ -126,34 +126,19 @@ function toggleTheme() {
   );
 }
 
-function addBattle() {
-  logs.push({
-    date: getDate(),
-    blue: false,
-    hihi: false
-  });
-  save();
-  render();
+function addBattle(){
+  logs.push({date:getToday(), blue:0, hihi:0});
+  save(); updateAll();
 }
 
 function addBlue(){
-  logs.push({
-    date: getDate(),
-    blue:true,
-    hihi:false
-  });
-  save();
-  updateAll();
+  logs.push({date:getToday(), blue:1, hihi:0});
+  save(); updateAll();
 }
 
-function addHihi() {
-  logs.push({
-    date: getDate(),
-    blue: false,
-    hihi: true
-  });
-  save();
-  render();
+function addHihi(){
+  logs.push({date:getToday(), blue:1, hihi:1});
+  save(); updateAll();
 }
 
 function render() {
