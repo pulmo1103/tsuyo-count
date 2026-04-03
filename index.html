@@ -3,223 +3,285 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>つよばは管理ツール</title>
+<title>つよばはヒヒ管理ツール</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-* { box-sizing: border-box; }
-
 body {
-    font-family: "Yu Gothic", "游ゴシック", sans-serif;
-    margin: 0;
-    padding: 16px;
-    max-width: 500px;
-    margin: auto;
-    background: #f4f6fb;
-    color: #222;
+  font-family: "Yu Gothic", "游ゴシック", sans-serif;
+  margin: 0;
+  padding: 10px;
+  background: #0b1a2b;
+  color: #fff;
 }
 
-.dark {
-    background: #0f172a;
-    color: #e5e7eb;
-}
-
-.card {
-    background: white;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-}
-
-.dark .card {
-    background: #1e293b;
+body.light {
+  background: #f5f5f5;
+  color: #000;
 }
 
 button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 6px;
-    border: none;
-    border-radius: 8px;
-    background: #3b82f6;
-    color: white;
-    font-size: 16px;
+  padding: 12px;
+  margin: 5px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+  background: #1e3a5f;
+  color: white;
 }
 
-input {
-    width: 100%;
-    padding: 8px;
-    margin-top: 4px;
+body.light button {
+  background: #ddd;
+  color: black;
 }
 
-.topbar {
-    display: flex;
-    gap: 6px;
+.card {
+  background: #13263d;
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+body.light .card {
+  background: #fff;
+}
+
+.counter {
+  font-size: 20px;
+}
+
+/* ★ピカ */
+.star::after {
+  content:"★";
+  position:absolute;
+  color:white;
+  opacity:0;
+  filter:blur(4px);
+  animation:sparkle 2s infinite;
+}
+
+@keyframes sparkle {
+  0%,85%,100%{opacity:0;}
+  90%{opacity:1;}
+}
+
+/* ヒヒ演出 */
+.hihi {
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  font-size:80px;
+  color:gold;
+  animation:hihiAnim 1s forwards;
+}
+
+@keyframes hihiAnim {
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
+  50%{transform:translate(-50%,-50%) scale(1.5);opacity:1;}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0;}
+}
+
+/* 金フラッシュ */
+.flash {
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%);
+  pointer-events:none;
+  animation:flashAnim 0.4s ease;
+}
+
+@keyframes flashAnim {
+  from{opacity:1;}
+  to{opacity:0;}
+}
+
+canvas {
+  max-height: 50vh;
 }
 </style>
 </head>
 
 <body>
 
-<h2>つよばは管理ツール</h2>
+<h2>つよばはヒヒ管理</h2>
 
-<div class="topbar">
-<input type="date" id="date">
-<button onclick="toggleDark()">🌙</button>
+<button onclick="toggleTheme()">ダーク/ライト切替</button>
+
+<div class="card">
+  <h3>今日のカウンター</h3>
+  <div class="counter">討伐: <span id="kill">0</span></div>
+  <div class="counter">青箱: <span id="blue">0</span></div>
+  <div class="counter">ヒヒ: <span id="hihi">0</span></div>
+
+  <button onclick="add('kill')">討伐+1</button>
+  <button onclick="add('blue')">青箱+1</button>
+  <button onclick="add('hihi')">ヒヒ+1</button>
 </div>
 
 <div class="card">
-<h3>カウンター</h3>
-<button onclick="add('battles')">戦闘 +1</button>
-<button onclick="add('blue')">青箱 +1</button>
-<button onclick="add('hihi')">ヒヒ +1</button>
+  <h3>統計</h3>
+  <div id="stats"></div>
 </div>
 
 <div class="card">
-<h3>統計</h3>
-<div id="stats"></div>
+  <h3>グラフ（月切替）</h3>
+  <input type="month" id="month" onchange="renderChart()">
+  <canvas id="chart"></canvas>
 </div>
 
 <div class="card">
-<h3>青箱率グラフ</h3>
-<input type="month" id="month">
-<canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-<button onclick="exportCSV()">CSV出力</button>
+  <button onclick="downloadCSV()">CSV出力</button>
 </div>
 
 <script>
+const DROP_RATE = 0.02;
 let data = JSON.parse(localStorage.getItem("data") || "{}");
+let today = new Date().toISOString().slice(0,10);
 
-const dateInput = document.getElementById("date");
-const monthInput = document.getElementById("month");
+if (!data[today]) data[today] = {kill:0, blue:0, hihi:0};
 
-dateInput.valueAsDate = new Date();
-monthInput.value = dateInput.value.slice(0,7);
-
-function getDateKey() {
-    return dateInput.value;
+function save(){
+  localStorage.setItem("data", JSON.stringify(data));
 }
 
-function ensureDate() {
-    const key = getDateKey();
-    if (!data[key]) data[key] = { battles:0, blue:0, hihi:0 };
+function add(type){
+  data[today][type]++;
+  if(type==="hihi") showHihi();
+  save();
+  update();
+  renderChart();
 }
 
-function add(type) {
-    ensureDate();
-    data[getDateKey()][type]++;
-    save();
+function showHihi(){
+  const el=document.createElement("div");
+  el.className="hihi";
+  el.innerText="★";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
 }
 
-function save() {
-    localStorage.setItem("data", JSON.stringify(data));
-    update();
+function flashGold(){
+  const f=document.createElement("div");
+  f.className="flash";
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(),400);
 }
 
-function calcStats() {
-    let totalBattles = 0;
-    let totalBlue = 0;
-    let totalHihi = 0;
+function update(){
+  document.getElementById("kill").innerText=data[today].kill;
+  document.getElementById("blue").innerText=data[today].blue;
+  document.getElementById("hihi").innerText=data[today].hihi;
 
-    Object.values(data).forEach(d=>{
-        totalBattles += d.battles;
-        totalBlue += d.blue;
-        totalHihi += d.hihi;
-    });
+  let totalKill=0,totalBlue=0,totalHihi=0,streak=0;
 
-    const blueRate = totalBattles ? totalBlue/totalBattles : 0;
-    const expected = totalBattles * blueRate * 0.02;
-    const diff = totalHihi - expected;
-    const ratio = expected ? totalHihi/expected : 0;
+  Object.keys(data).sort().forEach(d=>{
+    totalKill+=data[d].kill;
+    totalBlue+=data[d].blue;
+    totalHihi+=data[d].hihi;
+    if(data[d].hihi>0){
+      streak=0;
+    }else{
+      streak+=data[d].kill;
+    }
+  });
 
-    return {totalBattles,totalBlue,totalHihi,blueRate,expected,diff,ratio};
+  let blueRate = totalBlue/totalKill*100 || 0;
+  let hihiRate = totalHihi/totalBlue*100 || 0;
+
+  let expected = totalBlue*DROP_RATE;
+  let diff = totalHihi - expected;
+  let judge = diff>0 ? "神" : "地獄";
+
+  if(diff>0) flashGold();
+
+  document.getElementById("stats").innerHTML=`
+    青箱率: ${blueRate.toFixed(2)}%<br>
+    ヒヒ率: ${hihiRate.toFixed(2)}%<br>
+    前回ヒヒから: ${streak}戦<br>
+    判定: ${judge} (${diff.toFixed(2)})
+  `;
 }
 
-function judge(diff) {
-    if (diff >= 2) return "神";
-    if (diff >= 0.5) return "上振れ";
-    if (diff > -0.5) return "普通";
-    if (diff > -2) return "下振れ";
-    return "地獄";
-}
+let chart;
 
-function update() {
-    const s = calcStats();
+function renderChart(){
+  const ctx=document.getElementById("chart");
+  const month=document.getElementById("month").value || today.slice(0,7);
 
-    document.getElementById("stats").innerHTML = `
-    戦闘:${s.totalBattles}<br>
-    青箱:${s.totalBlue}<br>
-    ヒヒ:${s.totalHihi}<br>
-    青箱率:${(s.blueRate*100).toFixed(1)}%<br><br>
+  let labels=[],hihiRates=[],blueRates=[],pointStyles=[];
 
-    🔥 ${judge(s.diff)}<br>
-    期待値:${s.expected.toFixed(2)}<br>
-    差:${s.diff.toFixed(2)}<br>
-    倍率:${s.ratio.toFixed(2)}
-    `;
+  Object.keys(data).sort().forEach(d=>{
+    if(d.startsWith(month)){
+      let v=data[d];
+      labels.push(d);
 
-    drawChart();
-}
+      let hihiRate = v.blue ? v.hihi/v.blue*100 : 0;
+      let blueRate = v.kill ? v.blue/v.kill*100 : 0;
 
-function drawChart() {
-    const month = monthInput.value;
+      hihiRates.push(hihiRate);
+      blueRates.push(blueRate);
 
-    const labels = [];
-    const values = [];
+      pointStyles.push(v.hihi>0 ? "star" : "circle");
+    }
+  });
 
-    Object.keys(data).sort().forEach(date=>{
-        if (!date.startsWith(month)) return;
+  if(chart) chart.destroy();
 
-        const d = data[date];
-        const rate = d.battles ? d.blue/d.battles : 0;
-
-        labels.push(date.slice(5));
-        values.push((rate*100).toFixed(1));
-    });
-
-    const ctx = document.getElementById("chart");
-
-    if (window.chart) window.chart.destroy();
-
-    window.chart = new Chart(ctx, {
-        type:'line',
-        data:{
-            labels:labels,
-            datasets:[{
-                label:'青箱率%',
-                data:values,
-                tension:0.3
-            }]
+  chart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labels,
+      datasets:[
+      {
+        label:"ヒヒ率%",
+        data:hihiRates,
+        pointStyle:pointStyles,
+        pointRadius:6,
+        yAxisID:'y'
+      },
+      {
+        label:"青箱率%",
+        data:blueRates,
+        yAxisID:'y1'
+      }]
+    },
+    options:{
+      animation:{duration:300},
+      scales:{
+        y:{position:"left"},
+        y1:{
+          position:"right",
+          grid:{drawOnChartArea:false}
         }
-    });
+      }
+    }
+  });
 }
 
-function exportCSV() {
-    let csv = "date,battles,blue,hihi\n";
-
-    Object.keys(data).forEach(date=>{
-        const d = data[date];
-        csv += `${date},${d.battles},${d.blue},${d.hihi}\n`;
-    });
-
-    const blob = new Blob([csv], {type:"text/csv"});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "data.csv";
-    link.click();
+function downloadCSV(){
+  let csv="date,kill,blue,hihi\n";
+  Object.keys(data).forEach(d=>{
+    let v=data[d];
+    csv+=`${d},${v.kill},${v.blue},${v.hihi}\n`;
+  });
+  const blob=new Blob([csv]);
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="data.csv";
+  a.click();
 }
 
-function toggleDark() {
-    document.body.classList.toggle("dark");
+function toggleTheme(){
+  document.body.classList.toggle("light");
 }
-
-monthInput.addEventListener("change", drawChart);
 
 update();
+renderChart();
 </script>
 
 </body>
