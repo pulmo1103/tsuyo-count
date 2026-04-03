@@ -5,60 +5,103 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>つよばはヒヒ管理ツール</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body {
-  font-family: "Yu Gothic", "游ゴシック", sans-serif;
+  font-family: "Yu Gothic", sans-serif;
   margin:0; padding:10px;
   background:#0b1a2b; color:#fff;
 }
 body.light { background:#f5f5f5; color:#000; }
 
-button { padding:12px; margin:5px; border-radius:10px; border:none; font-size:16px; background:#1e3a5f; color:white; }
+button {
+  padding:18px 0;
+  margin:5px;
+  border-radius:12px;
+  border:none;
+  font-size:18px;
+  background:#1e3a5f;
+  color:white;
+}
 body.light button { background:#ddd; color:black; }
 
-.card { background:#13263d; padding:10px; border-radius:12px; margin-bottom:10px; }
+.card {
+  background:#13263d;
+  padding:10px;
+  border-radius:12px;
+  margin-bottom:10px;
+}
 body.light .card { background:#fff; }
 
-.counter input { width:60px; font-size:18px; text-align:center; }
-ul{padding-left:20px;}
-.star::after { content:"★"; position:absolute; color:white; opacity:0; filter:blur(4px); animation:sparkle 2s infinite; }
-@keyframes sparkle {0%,85%,100%{opacity:0;}90%{opacity:1;}}
-
-.hihi{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0); font-size:80px; color:gold; animation:hihiAnim 1s forwards; }
-@keyframes hihiAnim { 0%{transform:translate(-50%,-50%) scale(0);opacity:0;}50%{transform:translate(-50%,-50%) scale(1.5);opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;} }
-
-.flash{ position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); pointer-events:none; animation:flashAnim 0.4s ease; }
-@keyframes flashAnim { from{opacity:1;} to{opacity:0;} }
-
-canvas{ max-height:50vh; }
-
-  .counter {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.counter label {
-  min-width: 60px;
+.counter {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
 }
 
 .counter input {
-  width: 70px;
-  font-size: 20px;
-  padding: 8px;
-  border-radius: 8px;
-  text-align: center;
+  width:70px;
+  font-size:20px;
+  padding:8px;
+  border-radius:8px;
+  text-align:center;
 }
 
 .counter button {
-  flex: 1;
-  padding: 18px 0;
-  font-size: 18px;
-  border-radius: 12px;
+  flex:1;
+}
+
+/* グラフ横スクロール */
+.chart-wrap{
+  overflow-x:auto;
+}
+canvas{
+  min-width:800px;
+  max-height:50vh;
+}
+
+/* ヒヒ演出 */
+.hihiFlash{
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  font-size:80px;
+  color:gold;
+  animation:hihiPop 0.6s ease-out forwards;
+}
+@keyframes hihiPop{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
+  50%{transform:translate(-50%,-50%) scale(1.6);opacity:1;}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0;}
+}
+
+.flash{
+  position:fixed;
+  top:0;left:0;width:100%;height:100%;
+  background:radial-gradient(circle,rgba(255,215,0,0.5),transparent);
+  animation:flash 0.3s;
+}
+@keyframes flash{from{opacity:1;}to{opacity:0;}}
+
+/* パーティクル */
+.particle{
+  position:fixed;
+  width:6px;height:6px;
+  background:gold;
+  border-radius:50%;
+  pointer-events:none;
+  animation:particle 0.8s ease-out forwards;
+}
+@keyframes particle{
+  to{
+    transform:translate(var(--x),var(--y));
+    opacity:0;
+  }
 }
 </style>
 </head>
+
 <body>
 
 <h2>つよばはヒヒ管理</h2>
@@ -70,192 +113,196 @@ canvas{ max-height:50vh; }
 </div>
 
 <div class="card">
-  <h3>今日のカウンター</h3>
-<div class="counter">
-  <label>討伐</label>
-  <input type="number" id="kill" value="0" onchange="updateCount('kill', this.value)">
-  <button onclick="add('kill')">+1</button>
-</div>
+<h3>今日のカウンター</h3>
 
 <div class="counter">
-  <label>青箱</label>
-  <input type="number" id="blue" value="0" onchange="updateCount('blue', this.value)">
-  <button onclick="add('blue')">+1</button>
+<label>討伐</label>
+<input type="number" id="kill" value="0" onchange="updateCount('kill',this.value)">
+<button onclick="add('kill')">+1</button>
 </div>
 
 <div class="counter">
-  <label>ヒヒ</label>
-  <input type="number" id="hihi" value="0" onchange="updateCount('hihi', this.value)">
-  <button onclick="add('hihi')">+1</button>
+<label>青箱</label>
+<input type="number" id="blue" value="0" onchange="updateCount('blue',this.value)">
+<button onclick="add('blue')">+1</button>
 </div>
+
+<div class="counter">
+<label>ヒヒ</label>
+<input type="number" id="hihi" value="0" onchange="updateCount('hihi',this.value)">
+<button onclick="add('hihi')">+1</button>
+</div>
+
 </div>
 
 <div class="card">
-  <h3>日別統計ログ (直近50日)</h3>
-  <ul id="history"></ul>
+<h3>グラフ</h3>
+<input type="month" id="month" onchange="renderChart()">
+<div class="chart-wrap">
+<canvas id="chart"></canvas>
 </div>
-
-<div class="card">
-  <h3>統計</h3>
-  <div id="stats"></div>
-</div>
-
-<div class="card">
-  <h3>グラフ（月切替）</h3>
-  <input type="month" id="month" onchange="renderChart()">
-  <canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-  <button onclick="downloadCSV()">CSV出力</button>
 </div>
 
 <script>
-const DROP_RATE = 0.02;
-let data = JSON.parse(localStorage.getItem("data") || "{}");
+let data = JSON.parse(localStorage.getItem("data")||"{}");
 
-function getSelectedDate(){
-  const val = document.getElementById("inputDate").value;
-  return val ? val : new Date().toISOString().slice(0,10);
+function getDate(){
+  return document.getElementById("inputDate").value
+    || new Date().toISOString().slice(0,10);
 }
 
-function save(){ localStorage.setItem("data", JSON.stringify(data)); }
+function save(){
+  localStorage.setItem("data",JSON.stringify(data));
+}
 
-// ボタン +1用
 function add(type){
-  let date = getSelectedDate();
-  if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
-  data[date][type] = Number(data[date][type] || 0) + 1;
-  if(type==="hihi") showHihi();
+  let d=getDate();
+  if(!data[d]) data[d]={kill:0,blue:0,hihi:0};
+  data[d][type]++;
+
+  if(type==="hihi") triggerHihi();
+
   save();
   update();
   renderChart();
 }
 
-// 直接入力用
-function updateCount(type, val){
-  let date = getSelectedDate();
-  if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
-  data[date][type] = Math.max(0, Number(val) || 0); // NaN対策 + マイナス防止
+function updateCount(type,val){
+  let d=getDate();
+  if(!data[d]) data[d]={kill:0,blue:0,hihi:0};
+  data[d][type]=Math.max(0,Number(val)||0);
   save();
   update();
   renderChart();
 }
 
-function showHihi(){
+/* ヒヒ演出 */
+function triggerHihi(){
+  flash();
+
   const el=document.createElement("div");
-  el.className="hihi";
+  el.className="hihiFlash";
   el.innerText="★";
   document.body.appendChild(el);
-  setTimeout(()=>el.remove(),1000);
+  setTimeout(()=>el.remove(),600);
+
+  for(let i=0;i<20;i++){
+    const p=document.createElement("div");
+    p.className="particle";
+    p.style.left="50%";
+    p.style.top="50%";
+    p.style.setProperty("--x",(Math.random()-0.5)*200+"px");
+    p.style.setProperty("--y",(Math.random()-0.5)*200+"px");
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),800);
+  }
 }
 
-function flashGold(){
+function flash(){
   const f=document.createElement("div");
   f.className="flash";
   document.body.appendChild(f);
-  setTimeout(()=>f.remove(),400);
+  setTimeout(()=>f.remove(),300);
 }
 
 function update(){
-  let date = getSelectedDate();
-  if(!data[date]) data[date] = {kill:0, blue:0, hihi:0};
+  let d=getDate();
+  if(!data[d]) data[d]={kill:0,blue:0,hihi:0};
 
-  // 数値保証
-  let today = data[date];
-  today.kill = Number(today.kill || 0);
-  today.blue = Number(today.blue || 0);
-  today.hihi = Number(today.hihi || 0);
-
-  // inputに反映
-  document.getElementById("kill").value = today.kill;
-  document.getElementById("blue").value = today.blue;
-  document.getElementById("hihi").value = today.hihi;
-
-  let totalKill=0,totalBlue=0,totalHihi=0,streak=0,lastHihi=null;
-  let historyList=[];
-  let keys = Object.keys(data).sort().slice(-50);
-
-  keys.forEach(d=>{
-    let v=data[d];
-    let kill=Number(v.kill||0), blue=Number(v.blue||0), hihi=Number(v.hihi||0);
-    totalKill+=kill; totalBlue+=blue; totalHihi+=hihi;
-    if(hihi>0){ lastHihi=d; streak=0; } else { streak+=kill; }
-    historyList.push(`<li>${d}: 討伐${kill}, 青箱${blue}, ヒヒ${hihi}</li>`);
-  });
-
-  document.getElementById("history").innerHTML = historyList.join("");
-
-  let blueRate = totalBlue/totalKill*100 || 0;
-  let hihiRate = totalHihi/totalBlue*100 || 0;
-  let expected = totalBlue*DROP_RATE;
-  let diff = totalHihi - expected;
-  let judge = diff>0 ? "神" : "地獄";
-  if(diff>0) flashGold();
-
-  document.getElementById("stats").innerHTML=`
-    <b>日別統計 (${date})</b><br>
-    討伐: ${today.kill} / 青箱: ${today.blue} / ヒヒ: ${today.hihi}<br><br>
-    <b>全体統計</b><br>
-    青箱率: ${blueRate.toFixed(2)}%<br>
-    ヒヒ率: ${hihiRate.toFixed(2)}%<br>
-    前回ヒヒから: ${streak}戦<br>
-    判定: ${judge} (${diff.toFixed(2)})
-  `;
+  document.getElementById("kill").value=data[d].kill;
+  document.getElementById("blue").value=data[d].blue;
+  document.getElementById("hihi").value=data[d].hihi;
 }
 
 let chart;
 function renderChart(){
   const ctx=document.getElementById("chart");
-  const month=document.getElementById("month").value || new Date().toISOString().slice(0,7);
-  let labels=[],hihiRates=[],blueRates=[],pointStyles=[];
+  const month=document.getElementById("month").value
+    || new Date().toISOString().slice(0,7);
+
+  let labels=[],kills=[],blues=[],hihis=[],bg=[];
+
   Object.keys(data).sort().forEach(d=>{
     if(d.startsWith(month)){
       let v=data[d];
-      let kill=Number(v.kill||0), blue=Number(v.blue||0), hihi=Number(v.hihi||0);
       labels.push(d);
-      hihiRates.push(blue ? hihi/blue*100 : 0);
-      blueRates.push(kill ? blue/kill*100 : 0);
-      pointStyles.push(hihi>0 ? "star" : "circle");
+      kills.push(v.kill||0);
+      blues.push(v.blue||0);
+      hihis.push(v.hihi||0);
+
+      bg.push(v.hihi>0 ? "rgba(255,215,0,0.15)" : "transparent");
     }
   });
+
   if(chart) chart.destroy();
+
   chart=new Chart(ctx,{
-    type:"line",
     data:{
-      labels:labels,
+      labels,
       datasets:[
-        {label:"ヒヒ率%", data:hihiRates, pointStyle:pointStyles, pointRadius:6, yAxisID:'y'},
-        {label:"青箱率%", data:blueRates, yAxisID:'y1'}
+        {
+          type:"bar",
+          label:"討伐",
+          data:kills,
+          barThickness:6
+        },
+        {
+          type:"line",
+          label:"青箱",
+          data:blues,
+          tension:0.3
+        },
+        {
+          type:"line",
+          label:"ヒヒ",
+          data:hihis,
+          tension:0.3,
+          pointStyle:"star",
+          pointRadius:8
+        }
       ]
     },
     options:{
-      animation:{duration:300},
+      responsive:true,
+      plugins:{
+        tooltip:{
+          mode:"index",
+          intersect:false
+        }
+      },
       scales:{
-        y:{position:"left"},
-        y1:{position:"right", grid:{drawOnChartArea:false}}
+        y:{
+          beginAtZero:true,
+          suggestedMax:Math.max(...kills,...blues,...hihis)*1.2 || 10
+        }
       }
-    }
+    },
+    plugins:[{
+      id:"bgColor",
+      beforeDraw(c){
+        const {ctx,chartArea,scales:{x}}=c;
+        labels.forEach((_,i)=>{
+          if(bg[i]!=="transparent"){
+            const x1=x.getPixelForValue(i)-10;
+            const x2=x.getPixelForValue(i)+10;
+            ctx.fillStyle=bg[i];
+            ctx.fillRect(x1,chartArea.top,x2-x1,chartArea.bottom-chartArea.top);
+          }
+        });
+      }
+    }]
   });
 }
 
-function downloadCSV(){
-  let csv="date,kill,blue,hihi\n";
-  Object.keys(data).forEach(d=>{
-    let v=data[d];
-    csv+=`${d},${v.kill},${v.blue},${v.hihi}\n`;
-  });
-  const blob=new Blob([csv]);
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="data.csv";
-  a.click();
+function toggleTheme(){
+  document.body.classList.toggle("light");
 }
 
-function toggleTheme(){ document.body.classList.toggle("light"); }
+document.getElementById("inputDate").value=new Date().toISOString().slice(0,10);
 
-document.getElementById("inputDate").value = new Date().toISOString().slice(0,10);
-update(); renderChart();
+update();
+renderChart();
 </script>
+
 </body>
 </html>
