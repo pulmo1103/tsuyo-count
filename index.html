@@ -55,7 +55,6 @@ canvas{
   max-height:50vh;
 }
 
-/* ヒヒ演出 */
 .hihiFlash{
   position:fixed;
   top:50%; left:50%;
@@ -152,19 +151,56 @@ function updateCount(type,val){
   save(); update(); renderChart();
 }
 
-function getSinceLastHihi(){
+function calculateStats(){
+
   let dates=Object.keys(data).sort();
-  let total=0,last=0;
+  let totalKill=0,totalBlue=0;
+
+  let sinceKill=0,sinceBlue=0;
+  let foundLast=false;
+
   dates.forEach(d=>{
-    total+=data[d].kill||0;
-    if((data[d].hihi||0)>0) last=total;
+    let v=data[d];
+    totalKill+=v.kill||0;
+    totalBlue+=v.blue||0;
   });
-  return total-last;
+
+  for(let i=dates.length-1;i>=0;i--){
+    let d=dates[i];
+    let v=data[d];
+
+    if(v.hihi>0 && !foundLast){
+      foundLast=true;
+      continue;
+    }
+
+    if(!foundLast){
+      sinceKill+=v.kill||0;
+      sinceBlue+=v.blue||0;
+    }
+  }
+
+  let today=data[getDate()]||{kill:0,blue:0};
+
+  return {
+    sinceKill,
+    sinceBlue,
+    sinceBlueRate: sinceKill>0 ? (sinceBlue/sinceKill*100).toFixed(1) : 0,
+    totalBlueRate: totalKill>0 ? (totalBlue/totalKill*100).toFixed(1) : 0,
+    todayBlueRate: today.kill>0 ? (today.blue/today.kill*100).toFixed(1) : 0
+  };
 }
 
 function renderStats(){
-  document.getElementById("sinceHihi").textContent =
-    getSinceLastHihi()+"戦";
+
+  let s=calculateStats();
+
+  document.getElementById("sinceHihi").innerHTML=
+    `討伐：${s.sinceKill}戦<br>
+     青箱：${s.sinceBlue}個<br>
+     青箱率：${s.sinceBlueRate}%<br>
+     今日の青箱率：${s.todayBlueRate}%<br>
+     全体青箱率：${s.totalBlueRate}%`;
 
   let daily=document.getElementById("dailyStats");
   daily.innerHTML="";
@@ -203,7 +239,7 @@ function renderChart(){
   const month=document.getElementById("month").value
     || new Date().toISOString().slice(0,7);
 
-  let labels=[],kills=[],blues=[],hihis=[],bg=[];
+  let labels=[],kills=[],blues=[],hihis=[];
 
   Object.keys(data).sort().forEach(d=>{
     if(d.startsWith(month)){
@@ -212,7 +248,6 @@ function renderChart(){
       kills.push(v.kill||0);
       blues.push(v.blue||0);
       hihis.push(v.hihi||0);
-      bg.push(v.hihi>0 ? "rgba(255,215,0,0.15)" : "transparent");
     }
   });
 
@@ -222,66 +257,21 @@ function renderChart(){
     data:{
       labels,
       datasets:[
-        {
-          type:"bar",
-          label:"討伐",
-          data:kills,
-          backgroundColor:"rgba(255,99,132,0.75)",
-          borderRadius:4,
-          barThickness:6
-        },
-        {
-          type:"line",
-          label:"青箱",
-          data:blues,
-          borderColor:"rgba(59,130,246,1)",
-          backgroundColor:"rgba(59,130,246,0.2)",
-          tension:0.3,
-          borderWidth:2,
-          pointRadius:2
-        },
-        {
-          type:"line",
-          label:"ヒヒ",
-          data:hihis,
-          borderColor:"rgba(255,215,0,1)",
-          borderWidth:3,
-          tension:0,
-          pointRadius:(ctx)=>ctx.raw>0?8:0,
-          pointStyle:(ctx)=>ctx.raw>0?"star":"circle"
-        }
+        {type:"bar",label:"討伐",data:kills,
+         backgroundColor:"rgba(255,99,132,0.75)",barThickness:6},
+        {type:"line",label:"青箱",data:blues,
+         borderColor:"rgba(59,130,246,1)",borderWidth:2,tension:0.3},
+        {type:"line",label:"ヒヒ",data:hihis,
+         borderColor:"rgba(255,215,0,1)",
+         pointRadius:(ctx)=>ctx.raw>0?8:0,
+         pointStyle:(ctx)=>ctx.raw>0?"star":"circle"}
       ]
     },
     options:{
       responsive:true,
       plugins:{ tooltip:{enabled:false} },
-      scales:{
-        x:{
-          ticks:{ color:"#ccc" },
-          grid:{ color:"rgba(255,255,255,0.05)" }
-        },
-        y:{
-          beginAtZero:true,
-          grace:"10%",
-          ticks:{ color:"#ccc" },
-          grid:{ color:"rgba(255,255,255,0.08)" }
-        }
-      }
-    },
-    plugins:[{
-      id:"bgColor",
-      beforeDraw(c){
-        const {ctx,chartArea,scales:{x}}=c;
-        labels.forEach((_,i)=>{
-          if(bg[i]!=="transparent"){
-            const x1=x.getPixelForValue(i)-10;
-            const x2=x.getPixelForValue(i)+10;
-            ctx.fillStyle=bg[i];
-            ctx.fillRect(x1,chartArea.top,x2-x1,chartArea.bottom-chartArea.top);
-          }
-        });
-      }
-    }]
+      scales:{ y:{beginAtZero:true,grace:"10%"} }
+    }
   });
 }
 
