@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ヒヒ堀り最終分析ツール</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{font-family:sans-serif;padding:10px;background:#f5f5f5;}
+h2,h3{text-align:center;}
+.card{background:#fff;padding:12px;margin-bottom:10px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+input{width:100%;padding:8px;font-size:16px;}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;background:#4CAF50;color:white;}
+.good{color:green;} .bad{color:red;}
+</style>
+</head>
+
+<body>
+
+<h2>ヒヒ堀り最終ツール</h2>
+
+<div id="inputs"></div>
+
+<button onclick="addRow()">＋追加</button>
+<button onclick="calc()">📊 集計</button>
+
+<h3>累計分析</h3>
+<div id="total"></div>
+
+<h3>期待値</h3>
+<div class="card">
+<input type="number" id="target" placeholder="例：50%">
+<input type="number" id="perHour" placeholder="時速討伐数">
+<button onclick="expect()">計算</button>
+<div id="exp"></div>
+</div>
+
+<h3>グラフ</h3>
+<canvas id="chart"></canvas>
+
+<script>
+function save(){
+ let d=[];
+ document.querySelectorAll(".input").forEach(c=>{
+  let i=c.querySelectorAll("input");
+  d.push([...Array(5)].map((_,k)=>i[k].value));
+ });
+ localStorage.setItem("gbf",JSON.stringify(d));
+}
+
+function load(){
+ JSON.parse(localStorage.getItem("gbf")||"[]").forEach(x=>addRow(x));
+}
+
+function addRow(d=[]){
+ let div=document.createElement("div");
+ div.className="card input";
+ div.innerHTML=`
+ 日付<input type="date" value="${d[0]||''}">
+ 討伐<input type="number" value="${d[1]||''}">
+ 青箱<input type="number" value="${d[2]||''}">
+ ヒヒ<input type="number" value="${d[3]||''}">
+ 青箱ライン達成(%)<input type="number" value="${d[4]||''}">
+ `;
+ div.querySelectorAll("input").forEach(i=>i.oninput=save);
+ inputs.appendChild(div);
+}
+
+function sum(i){
+ let s=0;
+ document.querySelectorAll(".input").forEach(c=>{
+  s+=Number(c.querySelectorAll("input")[i].value||0);
+ });
+ return s;
+}
+
+let chart;
+
+function calc(){
+ let K=sum(1),B=sum(2),H=sum(3);
+
+ let blue=B/K||0;
+ let real=H/K||0;
+ let theory=blue*0.02;
+
+ let score = (real/theory||0)*100;
+
+ let cls = score>=100?"good":"bad";
+
+ total.innerHTML=
+ `<div class="card">
+ 討伐:${K}<br>
+ 青箱率:${(blue*100).toFixed(2)}%<br>
+ 実測:${(real*100).toFixed(4)}%<br>
+ 理論:${(theory*100).toFixed(4)}%<br>
+ <b class="${cls}">運スコア:${score.toFixed(1)}%</b>
+ </div>`;
+
+ // 月期待ヒヒ
+ let days = document.querySelectorAll(".input").length;
+ let perDay = H/days||0;
+ let monthly = perDay*30;
+
+ total.innerHTML+=
+ `<div class="card">
+ 月期待ヒヒ: 約${monthly.toFixed(2)}個
+ </div>`;
+
+ // グラフ
+ let labels=[],data=[],line=[];
+ document.querySelectorAll(".input").forEach(c=>{
+  let i=c.querySelectorAll("input");
+  if(!i[0].value||!i[1].value)return;
+
+  labels.push(i[0].value);
+  data.push((i[2].value/i[1].value*100)||0);
+  line.push(i[4].value||0);
+ });
+
+ if(chart)chart.destroy();
+
+ chart=new Chart(chart,{
+  type:"line",
+  data:{
+   labels:labels,
+   datasets:[
+    {label:"青箱率%",data:data},
+    {label:"ライン達成%",data:line}
+   ]
+  }
+ });
+}
+
+function expect(){
+ let p=target.value/100;
+ let rate=(sum(2)/sum(1))*0.02;
+
+ if(!rate){exp.innerText="データ不足";return;}
+
+ let n=Math.log(1-p)/Math.log(1-rate);
+ let h=perHour.value? n/perHour.value:null;
+
+ exp.innerText=`${Math.ceil(n)}戦`+(h?` / 約${h.toFixed(1)}時間`:"");
+}
+
+load();
+if(!document.querySelector(".input"))addRow();
+</script>
+
+</body>
+</html>
