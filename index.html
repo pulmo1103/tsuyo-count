@@ -3,177 +3,221 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ヒヒイロカネ集計ツール</title>
+<title>つよばは管理ツール</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-  font-family: "Yu Gothic", "游ゴシック", sans-serif;
-  margin: 10px;
-  background: var(--bg);
-  color: var(--text);
-}
+* { box-sizing: border-box; }
 
-:root {
-  --bg: #ffffff;
-  --text: #000000;
-  --card: #f5f5f5;
+body {
+    font-family: "Yu Gothic", "游ゴシック", sans-serif;
+    margin: 0;
+    padding: 16px;
+    max-width: 500px;
+    margin: auto;
+    background: #f4f6fb;
+    color: #222;
 }
 
 .dark {
-  --bg: #121212;
-  --text: #ffffff;
-  --card: #1e1e1e;
-}
-
-.container {
-  max-width: 500px;
-  margin: auto;
+    background: #0f172a;
+    color: #e5e7eb;
 }
 
 .card {
-  background: var(--card);
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 10px;
+    background: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.dark .card {
+    background: #1e293b;
 }
 
 button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 5px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  background: #4CAF50;
-  color: white;
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    border: none;
+    border-radius: 8px;
+    background: #3b82f6;
+    color: white;
+    font-size: 16px;
 }
 
-canvas {
-  width: 100%;
+input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+}
+
+.topbar {
+    display: flex;
+    gap: 6px;
 }
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<h2>ヒヒイロカネ集計</h2>
-<button onclick="toggleDark()">🌙 ダークモード</button>
+<h2>つよばは管理ツール</h2>
 
-<div class="card">
-<h3>今日</h3>
-<p>討伐: <span id="battle">0</span></p>
-<p>青箱: <span id="blue">0</span></p>
-<p>ヒヒ: <span id="hihi">0</span></p>
-
-<button onclick="count('battle')">討伐 +1</button>
-<button onclick="count('blue')">青箱 +1</button>
-<button onclick="count('hihi')">ヒヒ +1</button>
+<div class="topbar">
+<input type="date" id="date">
+<button onclick="toggleDark()">🌙</button>
 </div>
 
 <div class="card">
-<h3>確率</h3>
-<p>青箱率: <span id="blueRate">0</span>%</p>
-<p>ヒヒ率(青箱): <span id="hihiBlueRate">0</span>%</p>
+<h3>カウンター</h3>
+<button onclick="add('battles')">戦闘 +1</button>
+<button onclick="add('blue')">青箱 +1</button>
+<button onclick="add('hihi')">ヒヒ +1</button>
 </div>
 
 <div class="card">
-<h3>累計</h3>
-<p>討伐: <span id="totalBattle">0</span></p>
-<p>ヒヒ: <span id="totalHihi">0</span></p>
-<p>ヒヒ率: <span id="totalRate">0</span>%</p>
+<h3>統計</h3>
+<div id="stats"></div>
 </div>
 
 <div class="card">
-<h3>月間グラフ</h3>
+<h3>青箱率グラフ</h3>
+<input type="month" id="month">
 <canvas id="chart"></canvas>
 </div>
 
+<div class="card">
+<button onclick="exportCSV()">CSV出力</button>
 </div>
 
 <script>
-const today = new Date().toISOString().slice(0,10);
+let data = JSON.parse(localStorage.getItem("data") || "{}");
 
-let data = JSON.parse(localStorage.getItem("hihiData")) || {
-  daily: {},
-  totalBattle: 0,
-  totalHihi: 0,
-  dark: false
-};
+const dateInput = document.getElementById("date");
+const monthInput = document.getElementById("month");
 
-if (!data.daily[today]) {
-  data.daily[today] = { battle:0, blue:0, hihi:0 };
+dateInput.valueAsDate = new Date();
+monthInput.value = dateInput.value.slice(0,7);
+
+function getDateKey() {
+    return dateInput.value;
+}
+
+function ensureDate() {
+    const key = getDateKey();
+    if (!data[key]) data[key] = { battles:0, blue:0, hihi:0 };
+}
+
+function add(type) {
+    ensureDate();
+    data[getDateKey()][type]++;
+    save();
 }
 
 function save() {
-  localStorage.setItem("hihiData", JSON.stringify(data));
+    localStorage.setItem("data", JSON.stringify(data));
+    update();
 }
 
-function count(type) {
-  data.daily[today][type]++;
-  if (type === "battle") data.totalBattle++;
-  if (type === "hihi") data.totalHihi++;
-  save();
-  update();
+function calcStats() {
+    let totalBattles = 0;
+    let totalBlue = 0;
+    let totalHihi = 0;
+
+    Object.values(data).forEach(d=>{
+        totalBattles += d.battles;
+        totalBlue += d.blue;
+        totalHihi += d.hihi;
+    });
+
+    const blueRate = totalBattles ? totalBlue/totalBattles : 0;
+    const expected = totalBattles * blueRate * 0.02;
+    const diff = totalHihi - expected;
+    const ratio = expected ? totalHihi/expected : 0;
+
+    return {totalBattles,totalBlue,totalHihi,blueRate,expected,diff,ratio};
+}
+
+function judge(diff) {
+    if (diff >= 2) return "神";
+    if (diff >= 0.5) return "上振れ";
+    if (diff > -0.5) return "普通";
+    if (diff > -2) return "下振れ";
+    return "地獄";
 }
 
 function update() {
-  let d = data.daily[today];
+    const s = calcStats();
 
-  document.getElementById("battle").textContent = d.battle;
-  document.getElementById("blue").textContent = d.blue;
-  document.getElementById("hihi").textContent = d.hihi;
+    document.getElementById("stats").innerHTML = `
+    戦闘:${s.totalBattles}<br>
+    青箱:${s.totalBlue}<br>
+    ヒヒ:${s.totalHihi}<br>
+    青箱率:${(s.blueRate*100).toFixed(1)}%<br><br>
 
-  let blueRate = d.battle ? (d.blue/d.battle*100).toFixed(2) : 0;
-  let hihiBlueRate = d.blue ? (d.hihi/d.blue*100).toFixed(2) : 0;
+    🔥 ${judge(s.diff)}<br>
+    期待値:${s.expected.toFixed(2)}<br>
+    差:${s.diff.toFixed(2)}<br>
+    倍率:${s.ratio.toFixed(2)}
+    `;
 
-  document.getElementById("blueRate").textContent = blueRate;
-  document.getElementById("hihiBlueRate").textContent = hihiBlueRate;
-
-  let totalRate = data.totalBattle ? (data.totalHihi/data.totalBattle*100).toFixed(3) : 0;
-
-  document.getElementById("totalBattle").textContent = data.totalBattle;
-  document.getElementById("totalHihi").textContent = data.totalHihi;
-  document.getElementById("totalRate").textContent = totalRate;
-
-  drawChart();
-
-  if (data.dark) document.body.classList.add("dark");
+    drawChart();
 }
 
 function drawChart() {
-  const ctx = document.getElementById("chart").getContext("2d");
+    const month = monthInput.value;
 
-  const labels = [];
-  const values = [];
+    const labels = [];
+    const values = [];
 
-  const now = new Date();
-  const month = now.toISOString().slice(0,7);
+    Object.keys(data).sort().forEach(date=>{
+        if (!date.startsWith(month)) return;
 
-  Object.keys(data.daily).forEach(date => {
-    if (date.startsWith(month)) {
-      labels.push(date.slice(8));
-      values.push(data.daily[date].hihi);
-    }
-  });
+        const d = data[date];
+        const rate = d.battles ? d.blue/d.battles : 0;
 
-  ctx.clearRect(0,0,400,200);
+        labels.push(date.slice(5));
+        values.push((rate*100).toFixed(1));
+    });
 
-  const max = Math.max(...values,1);
+    const ctx = document.getElementById("chart");
 
-  values.forEach((v,i)=>{
-    let x = i * 20;
-    let h = (v/max)*100;
-    ctx.fillRect(x, 120-h, 15, h);
-    ctx.fillText(labels[i], x, 135);
-  });
+    if (window.chart) window.chart.destroy();
+
+    window.chart = new Chart(ctx, {
+        type:'line',
+        data:{
+            labels:labels,
+            datasets:[{
+                label:'青箱率%',
+                data:values,
+                tension:0.3
+            }]
+        }
+    });
+}
+
+function exportCSV() {
+    let csv = "date,battles,blue,hihi\n";
+
+    Object.keys(data).forEach(date=>{
+        const d = data[date];
+        csv += `${date},${d.battles},${d.blue},${d.hihi}\n`;
+    });
+
+    const blob = new Blob([csv], {type:"text/csv"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "data.csv";
+    link.click();
 }
 
 function toggleDark() {
-  data.dark = !data.dark;
-  save();
-  update();
+    document.body.classList.toggle("dark");
 }
+
+monthInput.addEventListener("change", drawChart);
 
 update();
 </script>
