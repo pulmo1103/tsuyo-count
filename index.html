@@ -14,12 +14,13 @@ body {
 }
 body.light { background:#f5f5f5; color:#000; }
 
+/* ボタン（少し小さく） */
 button {
-  padding:18px 0;
+  padding:16px 0;
   margin:5px;
   border-radius:12px;
   border:none;
-  font-size:18px;
+  font-size:16px;
   background:#1e3a5f;
   color:white;
 }
@@ -42,7 +43,7 @@ body.light .card { background:#fff; }
 
 .counter input {
   width:70px;
-  font-size:20px;
+  font-size:18px;
   padding:8px;
   border-radius:8px;
   text-align:center;
@@ -257,23 +258,36 @@ function renderChart(){
           label:"ヒヒ",
           data:hihis,
           tension:0.3,
-          pointStyle:"star",
-          pointRadius:8
+          borderColor:(ctx)=>ctx.raw>0?"orange":"rgba(255,165,0,0.2)",
+          pointRadius:(ctx)=>ctx.raw>0?8:0,
+          pointStyle:(ctx)=>ctx.raw>0?"star":"circle"
         }
       ]
     },
     options:{
       responsive:true,
+      interaction:{mode:"index",intersect:false},
       plugins:{
         tooltip:{
-          mode:"index",
-          intersect:false
-        }
+  callbacks:{
+    label:(ctx)=>{
+      const value = ctx.raw;
+      const datasetLabel = ctx.dataset.label;
+
+      // ヒヒデータセットかどうか判定
+      if(datasetLabel === "ヒヒ" && value > 0){
+        return `${datasetLabel}: ${value}回 🎉`;
+      }
+
+      return `${datasetLabel}: ${value}回`;
+    }
+  }
+}
       },
       scales:{
         y:{
           beginAtZero:true,
-          suggestedMax:Math.max(...kills,...blues,...hihis)*1.2 || 10
+          grace:"10%"
         }
       }
     },
