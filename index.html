@@ -2,294 +2,215 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>つよばは管理ツール</title>
+<title>ヒヒ掘り記録</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{
-  font-family:"Yu Gothic",sans-serif;
-  background:#f4f6fb;
-  margin:0;
-  padding:10px;
+body {
+  font-family: sans-serif;
+  margin: 10px;
 }
 
-button{
-  width:32%;
-  padding:12px;
-  font-size:13px;
-  margin:4px 0;
-  border:none;
-  border-radius:10px;
+button {
+  font-size: 14px;
+  padding: 6px 10px;
+  margin: 2px;
 }
 
-.kill{background:#ff7b7b;color:white;}
-.blue{background:#4dabf7;color:white;}
-.hihi{background:gold;color:black;}
-
-.card{
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  margin:10px 0;
+canvas {
+  max-width: 100%;
+  height: 300px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>つよばは管理</h2>
+<h2>ヒヒ掘り記録</h2>
 
-<div>
-  <button class="kill" onclick="addKill()">討伐+1</button>
-  <button class="blue" onclick="addBlue()">青箱+1</button>
-  <button class="hihi" onclick="addHihi()">ヒヒ+1</button>
-</div>
+<button onclick="addBattle(false)">通常討伐</button>
+<button onclick="addBattle(true)">青箱</button>
+<button onclick="addHihi()">ヒヒ出現</button>
 
-<div class="card">
-  <div id="today"></div>
-  <div id="since"></div>
-  <div id="sinceDetail"></div>
-  <div id="hihiPosition"></div>
-</div>
+<p id="stats"></p>
 
-<div class="card">
-  <canvas id="chart"></canvas>
-</div>
+<h3>前回ヒヒから</h3>
+<p id="sinceHihi"></p>
 
-<div class="card">
-  <h3>日別（7日）</h3>
-  <div id="daily"></div>
-</div>
+<h3>日別（直近7日）</h3>
+<p id="daily"></p>
 
-<div class="card">
-  <h3>月別</h3>
-  <div id="monthly"></div>
-</div>
+<h3>月別</h3>
+<p id="monthly"></p>
+
+<canvas id="chart"></canvas>
 
 <script>
+let logs = JSON.parse(localStorage.getItem("logs") || "[]");
 
-// ===== データ =====
-let data = JSON.parse(localStorage.getItem("data")||"{}");
-let log = JSON.parse(localStorage.getItem("log")||"[]");
-let hihiHistory = JSON.parse(localStorage.getItem("hihiHistory")||"[]");
-
-function save(){
-  localStorage.setItem("data",JSON.stringify(data));
-  localStorage.setItem("log",JSON.stringify(log));
-  localStorage.setItem("hihiHistory",JSON.stringify(hihiHistory));
+function save() {
+  localStorage.setItem("logs", JSON.stringify(logs));
 }
 
-// ===== 日付 =====
-function getToday(){
+function today() {
   return new Date().toISOString().slice(0,10);
 }
 
-function init(){
-  let d=getToday();
-  if(!data[d]){
-    data[d]={kill:0,blue:0,hihi:0};
-  }
-}
-
-// ===== ログ =====
-function addLog(type){
-  log.push({date:getToday(),type:type,time:Date.now()});
-}
-
-// ===== カウント =====
-function addKill(){
-  init();
-  data[getToday()].kill++;
-  addLog("kill");
-  save();
-  update();
-}
-
-function addBlue(){
-  init();
-  data[getToday()].blue++;
-  addLog("blue");
-  save();
-  update();
-}
-
-function addHihi(){
-  init();
-  data[getToday()].hihi++;
-
-  const since = calcSinceLastHihi();
-  hihiHistory.push(since.sinceKill + 1);
-
-  addLog("hihi");
-  save();
-  update();
-}
-
-// ===== 前回ヒヒから =====
-function calcSinceLastHihi(){
-
-  let sinceKill=0;
-  let sinceBlue=0;
-
-  for(let i=log.length-1;i>=0;i--){
-    let e=log[i];
-
-    if(e.type==="hihi") break;
-
-    if(e.type==="kill") sinceKill++;
-    if(e.type==="blue") sinceBlue++;
-  }
-
-  return {
-    sinceKill,
-    sinceBlue,
-    sinceBlueRate: sinceKill>0 ? (sinceBlue/sinceKill*100).toFixed(1) : 0
-  };
-}
-
-// ===== ヒヒ位置 =====
-function renderHihiPosition(){
-  if(hihiHistory.length===0){
-    return "ヒヒ履歴なし";
-  }
-
-  let last = hihiHistory[hihiHistory.length-1];
-  let avg = (hihiHistory.reduce((a,b)=>a+b,0)/hihiHistory.length).toFixed(1);
-
-  return `直近ヒヒ：${last}戦 / 平均：${avg}戦`;
-}
-
-// ===== 日別 =====
-function renderDaily(){
-  let dates = Object.keys(data).sort().reverse().slice(0,7);
-  let html="";
-  dates.forEach(d=>{
-    let v=data[d];
-    html += `${d}：${v.kill}戦 / 青${v.blue} / ヒヒ${v.hihi}<br>`;
+function addBattle(isBlue) {
+  logs.push({
+    date: today(),
+    blue: isBlue,
+    hihi: false
   });
-  document.getElementById("daily").innerHTML = html;
+  save();
+  render();
 }
 
-// ===== 月別 =====
-function renderMonthly(){
+function addHihi() {
+  logs.push({
+    date: today(),
+    blue: false,
+    hihi: true
+  });
+  save();
+  render();
+}
 
-  let m={};
+function render() {
+  let total = logs.length;
+  let blue = logs.filter(l => l.blue).length;
+  let hihi = logs.filter(l => l.hihi).length;
 
-  Object.keys(data).forEach(d=>{
-    let month=d.slice(0,7);
-    if(!m[month]) m[month]={kill:0,blue:0,hihi:0};
+  document.getElementById("stats").innerText =
+    `討伐:${total} 青箱:${blue} ヒヒ:${hihi}`;
 
-    m[month].kill+=data[d].kill;
-    m[month].blue+=data[d].blue;
-    m[month].hihi+=data[d].hihi;
+  renderSinceHihi();
+  renderDaily();
+  renderMonthly();
+  drawChart();
+}
+
+function renderSinceHihi() {
+  let last = logs.map((l,i)=>l.hihi?i:-1).filter(i=>i>=0).pop();
+
+  let target = last == null ? logs : logs.slice(last+1);
+
+  let battles = target.length;
+  let blue = target.filter(l=>l.blue).length;
+
+  let totalBlue = logs.filter(l=>l.blue).length;
+
+  let percent = battles ? (blue/battles*100).toFixed(1) : 0;
+  let totalPercent = logs.length ? (totalBlue/logs.length*100).toFixed(1) : 0;
+
+  document.getElementById("sinceHihi").innerText =
+    `戦闘数:${battles} / 青箱:${blue}
+青箱率:${percent}%
+全体青箱率:${totalPercent}%`;
+}
+
+function renderDaily() {
+  let map = {};
+
+  logs.forEach(l=>{
+    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
+    map[l.date].b++;
+    if(l.blue) map[l.date].blue++;
+    if(l.hihi) map[l.date].h++;
   });
 
-  let html="";
-  Object.keys(m).sort().forEach(k=>{
-    let v=m[k];
-    html += `${k}：${v.kill}戦 / 青${v.blue} / ヒヒ${v.hihi}<br>`;
-  });
+  let keys = Object.keys(map).sort().slice(-7);
 
-  document.getElementById("monthly").innerHTML = html;
+  let text = keys.map(d=>{
+    let v=map[d];
+    return `${d} 討伐:${v.b} 青:${v.blue} ヒヒ:${v.h}`;
+  }).join("\n");
+
+  document.getElementById("daily").innerText = text;
 }
 
-// ===== グラフ =====
+function renderMonthly() {
+  let map = {};
+
+  logs.forEach(l=>{
+    let m = l.date.slice(0,7);
+    if(!map[m]) map[m]={b:0,blue:0,h:0};
+    map[m].b++;
+    if(l.blue) map[m].blue++;
+    if(l.hihi) map[m].h++;
+  });
+
+  let text = Object.keys(map).sort().map(m=>{
+    let v=map[m];
+    return `${m} 討伐:${v.b} 青:${v.blue} ヒヒ:${v.h}`;
+  }).join("\n");
+
+  document.getElementById("monthly").innerText = text;
+}
+
 let chart;
 
-function drawChart(){
+function drawChart() {
+  let map = {};
 
-  let labels = Object.keys(data).sort();
+  logs.forEach(l=>{
+    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
+    map[l.date].b++;
+    if(l.blue) map[l.date].blue++;
+    if(l.hihi) map[l.date].h++;
+  });
 
-  let kill = labels.map(d=>data[d].kill);
-  let blue = labels.map(d=>data[d].blue);
-  let hihi = labels.map(d=>data[d].hihi);
+  let labels = Object.keys(map).sort();
 
-  let ctx = document.getElementById("chart");
+  let battles = labels.map(d=>map[d].b);
+  let blue = labels.map(d=>map[d].blue);
+  let hihi = labels.map(d=>map[d].h);
 
   if(chart) chart.destroy();
 
-  chart = new Chart(ctx,{
-    data:{
-      labels:labels,
-      datasets:[
+  chart = new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
         {
-          type:"bar",
-          label:"討伐",
-          data:kill,
-          yAxisID:"y",
-          backgroundColor:"rgba(255,120,120,0.7)",
-          barThickness:8
+          label: "討伐数",
+          data: battles,
+          borderWidth: 2,
+          yAxisID: "y"
         },
         {
-          type:"line",
-          label:"青箱",
-          data:blue,
-          yAxisID:"y1",
-          borderColor:"#4dabf7",
-          borderWidth:2,
-          tension:0.3
+          label: "青箱",
+          data: blue,
+          borderWidth: 2,
+          yAxisID: "y1"
         },
         {
-          type:"line",
-          label:"ヒヒ",
-          data:hihi,
-          yAxisID:"y1",
-          borderColor:"gold",
-          borderWidth:3,
-          pointRadius:5,
-          tension:0.3
+          label: "ヒヒ",
+          data: hihi,
+          borderWidth: 2,
+          yAxisID: "y1"
         }
       ]
     },
-    options:{
-      responsive:true,
-      plugins:{legend:{display:true}},
-      scales:{
-        y:{
-          position:"left",
-          beginAtZero:true,
-          title:{display:true,text:"討伐数"}
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          position: "left",
+          beginAtZero: true
         },
-        y1:{
-          position:"right",
-          beginAtZero:true,
-          grid:{drawOnChartArea:false},
-          title:{display:true,text:"青箱 / ヒヒ"}
+        y1: {
+          position: "right",
+          beginAtZero: true,
+          grid: { drawOnChartArea: false }
         }
       }
     }
   });
 }
 
-// ===== 更新 =====
-function update(){
-
-  init();
-
-  let t=data[getToday()];
-  document.getElementById("today").textContent =
-    `今日：${t.kill}戦 / 青${t.blue} / ヒヒ${t.hihi}`;
-
-  let since = calcSinceLastHihi();
-
-  document.getElementById("since").textContent =
-    `前回ヒヒから：${since.sinceKill}戦`;
-
-  document.getElementById("sinceDetail").textContent =
-    `青箱：${since.sinceBlue}（${since.sinceBlueRate}%）`;
-
-  document.getElementById("hihiPosition").textContent =
-    renderHihiPosition();
-
-  renderDaily();
-  renderMonthly();
-  drawChart();
-}
-
-// ===== 初期 =====
-update();
-
+render();
 </script>
 
 </body>
