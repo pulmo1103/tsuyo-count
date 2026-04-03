@@ -31,6 +31,32 @@ ul{padding-left:20px;}
 @keyframes flashAnim { from{opacity:1;} to{opacity:0;} }
 
 canvas{ max-height:50vh; }
+
+  .counter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.counter label {
+  min-width: 60px;
+}
+
+.counter input {
+  width: 70px;
+  font-size: 20px;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.counter button {
+  flex: 1;
+  padding: 18px 0;
+  font-size: 18px;
+  border-radius: 12px;
+}
 </style>
 </head>
 <body>
@@ -45,18 +71,23 @@ canvas{ max-height:50vh; }
 
 <div class="card">
   <h3>今日のカウンター</h3>
-  <div class="counter">討伐: 
-    <input type="number" id="kill" value="0" onchange="updateCount('kill', this.value)">
-    <button onclick="add('kill')">+1</button>
-  </div>
-  <div class="counter">青箱: 
-    <input type="number" id="blue" value="0" onchange="updateCount('blue', this.value)">
-    <button onclick="add('blue')">+1</button>
-  </div>
-  <div class="counter">ヒヒ: 
-    <input type="number" id="hihi" value="0" onchange="updateCount('hihi', this.value)">
-    <button onclick="add('hihi')">+1</button>
-  </div>
+<div class="counter">
+  <label>討伐</label>
+  <input type="number" id="kill" value="0" onchange="updateCount('kill', this.value)">
+  <button onclick="add('kill')">+1</button>
+</div>
+
+<div class="counter">
+  <label>青箱</label>
+  <input type="number" id="blue" value="0" onchange="updateCount('blue', this.value)">
+  <button onclick="add('blue')">+1</button>
+</div>
+
+<div class="counter">
+  <label>ヒヒ</label>
+  <input type="number" id="hihi" value="0" onchange="updateCount('hihi', this.value)">
+  <button onclick="add('hihi')">+1</button>
+</div>
 </div>
 
 <div class="card">
