@@ -14,13 +14,12 @@ body {
 }
 body.light { background:#f5f5f5; color:#000; }
 
-/* ボタン（少し小さく） */
 button {
-  padding:16px 0;
+  padding:14px 0;
   margin:5px;
   border-radius:12px;
   border:none;
-  font-size:16px;
+  font-size:14px;
   background:#1e3a5f;
   color:white;
 }
@@ -49,16 +48,10 @@ body.light .card { background:#fff; }
   text-align:center;
 }
 
-.counter button {
-  flex:1;
-}
+.counter button { flex:1; }
 
-/* グラフ横スクロール */
-.chart-wrap{
-  overflow-x:auto;
-}
 canvas{
-  min-width:800px;
+  width:100% !important;
   max-height:50vh;
 }
 
@@ -85,7 +78,6 @@ canvas{
 }
 @keyframes flash{from{opacity:1;}to{opacity:0;}}
 
-/* パーティクル */
 .particle{
   position:fixed;
   width:6px;height:6px;
@@ -133,15 +125,27 @@ canvas{
 <input type="number" id="hihi" value="0" onchange="updateCount('hihi',this.value)">
 <button onclick="add('hihi')">+1</button>
 </div>
+</div>
 
+<div class="card">
+<h3>前回ヒヒから</h3>
+<div id="sinceHihi"></div>
+</div>
+
+<div class="card">
+<h3>直近7日</h3>
+<div id="dailyStats"></div>
+</div>
+
+<div class="card">
+<h3>月別統計</h3>
+<div id="monthlyStats"></div>
 </div>
 
 <div class="card">
 <h3>グラフ</h3>
 <input type="month" id="month" onchange="renderChart()">
-<div class="chart-wrap">
 <canvas id="chart"></canvas>
-</div>
 </div>
 
 <script>
@@ -160,59 +164,63 @@ function add(type){
   let d=getDate();
   if(!data[d]) data[d]={kill:0,blue:0,hihi:0};
   data[d][type]++;
-
   if(type==="hihi") triggerHihi();
-
-  save();
-  update();
-  renderChart();
+  save(); update(); renderChart();
 }
 
 function updateCount(type,val){
   let d=getDate();
   if(!data[d]) data[d]={kill:0,blue:0,hihi:0};
   data[d][type]=Math.max(0,Number(val)||0);
-  save();
-  update();
-  renderChart();
+  save(); update(); renderChart();
 }
 
-/* ヒヒ演出 */
-function triggerHihi(){
-  flash();
-
-  const el=document.createElement("div");
-  el.className="hihiFlash";
-  el.innerText="★";
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(),600);
-
-  for(let i=0;i<20;i++){
-    const p=document.createElement("div");
-    p.className="particle";
-    p.style.left="50%";
-    p.style.top="50%";
-    p.style.setProperty("--x",(Math.random()-0.5)*200+"px");
-    p.style.setProperty("--y",(Math.random()-0.5)*200+"px");
-    document.body.appendChild(p);
-    setTimeout(()=>p.remove(),800);
-  }
+function getSinceLastHihi(){
+  let dates=Object.keys(data).sort();
+  let total=0,last=0;
+  dates.forEach(d=>{
+    total+=data[d].kill||0;
+    if((data[d].hihi||0)>0) last=total;
+  });
+  return total-last;
 }
 
-function flash(){
-  const f=document.createElement("div");
-  f.className="flash";
-  document.body.appendChild(f);
-  setTimeout(()=>f.remove(),300);
+function renderStats(){
+  // 前回ヒヒ
+  document.getElementById("sinceHihi").textContent =
+    getSinceLastHihi()+"戦";
+
+  // 直近7日
+  let daily=document.getElementById("dailyStats");
+  daily.innerHTML="";
+  Object.keys(data).sort().reverse().slice(0,7).forEach(d=>{
+    let v=data[d];
+    daily.innerHTML+=`${d}｜討伐:${v.kill} 青箱:${v.blue} ヒヒ:${v.hihi}<br>`;
+  });
+
+  // 月別
+  let m={}, monthly=document.getElementById("monthlyStats");
+  monthly.innerHTML="";
+  Object.keys(data).forEach(d=>{
+    let key=d.slice(0,7);
+    if(!m[key]) m[key]={kill:0,blue:0,hihi:0};
+    m[key].kill+=data[d].kill||0;
+    m[key].blue+=data[d].blue||0;
+    m[key].hihi+=data[d].hihi||0;
+  });
+  Object.keys(m).sort().reverse().forEach(k=>{
+    let v=m[k];
+    monthly.innerHTML+=`${k}｜討伐:${v.kill} 青箱:${v.blue} ヒヒ:${v.hihi}<br>`;
+  });
 }
 
 function update(){
   let d=getDate();
   if(!data[d]) data[d]={kill:0,blue:0,hihi:0};
-
   document.getElementById("kill").value=data[d].kill;
   document.getElementById("blue").value=data[d].blue;
   document.getElementById("hihi").value=data[d].hihi;
+  renderStats();
 }
 
 let chart;
@@ -230,7 +238,6 @@ function renderChart(){
       kills.push(v.kill||0);
       blues.push(v.blue||0);
       hihis.push(v.hihi||0);
-
       bg.push(v.hihi>0 ? "rgba(255,215,0,0.15)" : "transparent");
     }
   });
@@ -241,24 +248,13 @@ function renderChart(){
     data:{
       labels,
       datasets:[
-        {
-          type:"bar",
-          label:"討伐",
-          data:kills,
-          barThickness:6
-        },
-        {
-          type:"line",
-          label:"青箱",
-          data:blues,
-          tension:0.3
-        },
+        {type:"bar",label:"討伐",data:kills,barThickness:6},
+        {type:"line",label:"青箱",data:blues,tension:0.3},
         {
           type:"line",
           label:"ヒヒ",
           data:hihis,
-          tension:0.3,
-          borderColor:(ctx)=>ctx.raw>0?"orange":"rgba(255,165,0,0.2)",
+          borderColor:"orange",
           pointRadius:(ctx)=>ctx.raw>0?8:0,
           pointStyle:(ctx)=>ctx.raw>0?"star":"circle"
         }
@@ -266,20 +262,8 @@ function renderChart(){
     },
     options:{
       responsive:true,
-      interaction:{mode:"index",intersect:false},
-      plugins:{
-        tooltip:{
-          callbacks:{
-            label:(ctx)=>`${ctx.dataset.label}: ${ctx.raw}回`
-          }
-        }
-      },
-      scales:{
-        y:{
-          beginAtZero:true,
-          grace:"10%"
-        }
-      }
+      plugins:{ tooltip:{enabled:false} },
+      scales:{ y:{beginAtZero:true,grace:"10%"} }
     },
     plugins:[{
       id:"bgColor",
@@ -302,256 +286,18 @@ function toggleTheme(){
   document.body.classList.toggle("light");
 }
 
+function triggerHihi(){
+  const el=document.createElement("div");
+  el.className="hihiFlash";
+  el.innerText="★";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),600);
+}
+
 document.getElementById("inputDate").value=new Date().toISOString().slice(0,10);
 
 update();
 renderChart();
-</script>
-
-</body>
-</html><!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>つよばはカウンター</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body {
-  font-family: "Yu Gothic", sans-serif;
-  margin: 10px;
-  background:#0f172a;
-  color:#e5e7eb;
-}
-
-.card{
-  background:#1e293b;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:10px;
-}
-
-button{
-  width:100%;
-  padding:14px;
-  font-size:16px;
-  margin:4px 0;
-  border:none;
-  border-radius:10px;
-}
-
-.kill{ background:#ef4444;}
-.blue{ background:#3b82f6;}
-.hihi{ background:#facc15; color:#000;}
-
-input{
-  width:100%;
-  padding:10px;
-  margin-bottom:6px;
-  border-radius:8px;
-  border:none;
-}
-
-canvas{
-  max-width:100%;
-}
-
-</style>
-</head>
-
-<body>
-
-<h2>つよばはカウンター</h2>
-
-<div class="card">
-<input type="date" id="date">
-<button class="kill" onclick="add('kills',1)">討伐 +1</button>
-<button class="blue" onclick="add('blues',1)">青箱 +1</button>
-<button class="hihi" onclick="add('hihis',1)">ヒヒ +1</button>
-</div>
-
-<div class="card">
-<input type="number" id="killsInput" placeholder="討伐数">
-<input type="number" id="blueInput" placeholder="青箱数">
-<input type="number" id="hihiInput" placeholder="ヒヒ数">
-<button onclick="saveDirect()">直接入力保存</button>
-</div>
-
-<div class="card" id="sinceHihi"></div>
-
-<div class="card">
-<h3>直近7日</h3>
-<div id="dailyStats"></div>
-</div>
-
-<div class="card">
-<h3>月別</h3>
-<div id="monthlyStats"></div>
-</div>
-
-<div style="width:100%; height:260px;">
-<canvas id="chart"></canvas>
-</div>
-
-<script>
-
-const STORAGE_KEY = "tsuyo_data";
-
-function load(){
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-}
-
-function save(data){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-function getDate(){
-  return document.getElementById("date").value || new Date().toISOString().slice(0,10);
-}
-
-function add(type,val){
-  const data = load();
-  const d = getDate();
-
-  if(!data[d]) data[d]={kills:0,blues:0,hihis:0};
-
-  data[d][type] += val;
-  save(data);
-  update();
-}
-
-function saveDirect(){
-  const data = load();
-  const d = getDate();
-
-  data[d]={
-    kills:Number(document.getElementById("killsInput").value)||0,
-    blues:Number(document.getElementById("blueInput").value)||0,
-    hihis:Number(document.getElementById("hihiInput").value)||0
-  };
-
-  save(data);
-  update();
-}
-
-function getSinceLastHihi(data){
-  const dates = Object.keys(data).sort();
-
-  let total=0;
-  let last=0;
-
-  dates.forEach(date=>{
-    total += data[date].kills;
-    if(data[date].hihis>0){
-      last = total;
-    }
-  });
-
-  return total - last;
-}
-
-function renderSinceHihi(data){
-  const el=document.getElementById("sinceHihi");
-  el.textContent="前回ヒヒから："+getSinceLastHihi(data)+"戦";
-}
-
-function renderDailyStats(data){
-  const el=document.getElementById("dailyStats");
-  el.innerHTML="";
-
-  Object.keys(data).sort().reverse().slice(0,7).forEach(date=>{
-    const d=data[date];
-    const div=document.createElement("div");
-    div.textContent=`${date}｜討伐:${d.kills} 青箱:${d.blues} ヒヒ:${d.hihis}`;
-    el.appendChild(div);
-  });
-}
-
-function renderMonthlyStats(data){
-  const el=document.getElementById("monthlyStats");
-  el.innerHTML="";
-
-  const m={};
-
-  Object.keys(data).forEach(date=>{
-    const key=date.slice(0,7);
-    if(!m[key]) m[key]={kills:0,blues:0,hihis:0};
-
-    m[key].kills+=data[date].kills;
-    m[key].blues+=data[date].blues;
-    m[key].hihis+=data[date].hihis;
-  });
-
-  Object.keys(m).sort().reverse().forEach(month=>{
-    const d=m[month];
-    const div=document.createElement("div");
-    div.textContent=`${month}｜討伐:${d.kills} 青箱:${d.blues} ヒヒ:${d.hihis}`;
-    el.appendChild(div);
-  });
-}
-
-function renderChart(data){
-  const ctx=document.getElementById("chart");
-
-  const labels=Object.keys(data).sort();
-  const kills=labels.map(d=>data[d].kills);
-  const blues=labels.map(d=>data[d].blues);
-  const hihis=labels.map(d=>data[d].hihis);
-
-  if(window.chart) window.chart.destroy();
-
-  window.chart=new Chart(ctx,{
-    data:{
-      labels,
-      datasets:[
-        {
-          type:"bar",
-          label:"討伐",
-          data:kills,
-          backgroundColor:"rgba(255,99,132,0.7)",
-          barThickness:6
-        },
-        {
-          type:"line",
-          label:"青箱",
-          data:blues,
-          borderColor:"blue",
-          tension:0.3
-        },
-        {
-          type:"line",
-          label:"ヒヒ",
-          data:hihis,
-          borderColor:"gold",
-          pointStyle:"star",
-          pointRadius:ctx=>ctx.raw>0?6:0
-        }
-      ]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{
-        tooltip:{enabled:false}
-      },
-      scales:{
-        y:{beginAtZero:true,grace:"10%"}
-      }
-    }
-  });
-}
-
-function update(){
-  const data=load();
-  renderSinceHihi(data);
-  renderDailyStats(data);
-  renderMonthlyStats(data);
-  renderChart(data);
-}
-
-update();
-
 </script>
 
 </body>
