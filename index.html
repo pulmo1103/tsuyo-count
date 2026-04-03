@@ -126,14 +126,24 @@ function toggleTheme() {
   );
 }
 
-function addBattle(isBlue) {
+function addBattle() {
   logs.push({
     date: getDate(),
-    blue: isBlue,
+    blue: false,
     hihi: false
   });
   save();
   render();
+}
+
+function addBlue(){
+  logs.push({
+    date: getDate(),
+    blue:true,
+    hihi:false
+  });
+  save();
+  updateAll();
 }
 
 function addHihi() {
