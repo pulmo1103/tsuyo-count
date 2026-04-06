@@ -7,17 +7,49 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{font-family:"Yu Gothic",sans-serif;margin:10px;background:#f1f5f9;}
-body.dark{background:#0f172a;color:#e2e8f0;}
-.card{background:white;padding:10px;margin-bottom:10px;border-radius:10px;}
-body.dark .card{background:#1e293b;}
+body{
+  font-family:"Yu Gothic",sans-serif;
+  margin:10px;
+  background:#f1f5f9;
+}
+body.dark{
+  background:#0f172a;
+  color:#e2e8f0;
+}
+.card{
+  background:white;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:10px;
+}
+body.dark .card{
+  background:#1e293b;
+}
 
-.counter-row{display:flex;gap:10px;margin-bottom:10px;}
-.counter-btn{flex:1;font-size:18px;padding:16px;border:none;border-radius:12px;font-weight:bold;color:white;}
+/* ボタン */
+.counter-row{
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+.counter-btn{
+  flex:1;
+  font-size:16px;
+  padding:18px;
+  border:none;
+  border-radius:12px;
+  font-weight:bold;
+  color:white;
+}
 .counter-btn.battle{background:#ef4444;}
 .counter-btn.blue{background:#3b82f6;}
-.counter-btn.hihi{background:linear-gradient(135deg,#facc15,#eab308);color:#222;}
-.counter-btn:active{transform:scale(0.96);}
+.counter-btn.hihi{
+  background:linear-gradient(135deg,#facc15,#eab308);
+  color:#222;
+}
+.counter-btn:active{
+  transform:scale(0.96);
+}
 </style>
 </head>
 
@@ -43,140 +75,197 @@ body.dark .card{background:#1e293b;}
 </div>
 </div>
 
+<div class="card">
+<canvas id="chart"></canvas>
+</div>
+
 <div class="card" id="since"></div>
 <div class="card" id="daily"></div>
 <div class="card" id="monthly"></div>
 
-<div class="card"><canvas id="chart"></canvas></div>
-  
 <script>
 let logs=JSON.parse(localStorage.getItem("logs")||"[]");
 let chart;
 
-// ===== 日付 =====
+// ===== JST日付 =====
+function getJSTDate(){
+  const now=new Date();
+  const jst=new Date(now.getTime()+9*60*60*1000);
+  return jst.toISOString().split("T")[0];
+}
+
 function getToday(){return document.getElementById("date").value;}
 function isPastMode(){return document.getElementById("pastMode").checked;}
 
 function setToday(){
-if(!isPastMode()){
-document.getElementById("date").value=new Date().toISOString().split("T")[0];
-}
+  if(!isPastMode()){
+    document.getElementById("date").value=getJSTDate();
+  }
 }
 
 // ===== 保存 =====
 function save(){localStorage.setItem("logs",JSON.stringify(logs));}
 
-// ===== 追加 =====
-function addBattle(){logs.push({date:getToday(),blue:0,hihi:0});save();updateAll();setToday();}
-function addBlue(){logs.push({date:getToday(),blue:1,hihi:0});save();updateAll();setToday();}
-function addHihi(){logs.push({date:getToday(),blue:1,hihi:1});save();updateAll();setToday();}
+// ===== カウント =====
+function addBattle(){
+  logs.push({date:getToday(),blue:0,hihi:0});
+  save(); updateAll(); setToday();
+}
+function addBlue(){
+  logs.push({date:getToday(),blue:1,hihi:0});
+  save(); updateAll(); setToday();
+}
+function addHihi(){
+  logs.push({date:getToday(),blue:1,hihi:1});
+  save(); updateAll(); setToday();
+}
 
 // ===== 前回ヒヒ =====
 function renderSince(){
-let total=0,last=0,blueTotal=0,lastBlue=0;
+  let total=0,last=0,blueTotal=0,lastBlue=0;
 
-logs.forEach(l=>{
-total++;
-if(l.blue) blueTotal++;
-if(l.hihi){last=total;lastBlue=blueTotal;}
-});
+  logs.forEach(l=>{
+    total++;
+    if(l.blue) blueTotal++;
+    if(l.hihi){
+      last=total;
+      lastBlue=blueTotal;
+    }
+  });
 
-document.getElementById("since").innerHTML=
-`前回ヒヒから:${total-last}戦<br>
-青箱:${blueTotal-lastBlue}`;
+  let sinceBattle=total-last;
+  let sinceBlue=blueTotal-lastBlue;
+  let rate=sinceBattle>0?(sinceBlue/sinceBattle*100).toFixed(2):0;
+
+  document.getElementById("since").innerHTML=
+  `前回ヒヒから:${sinceBattle}戦<br>
+   青箱:${sinceBlue}<br>
+   青箱率:${rate}%`;
 }
 
-// ===== 日別 =====
+// ===== 日別（7日） =====
 function renderDaily(){
-let map={};
-logs.forEach(l=>{
-if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
-map[l.date].b++;
-if(l.blue) map[l.date].blue++;
-if(l.hihi) map[l.date].h++;
-});
+  let map={};
+  logs.forEach(l=>{
+    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
+    map[l.date].b++;
+    if(l.blue) map[l.date].blue++;
+    if(l.hihi) map[l.date].h++;
+  });
 
-let html="";
-Object.keys(map).sort().reverse().slice(0,7).forEach(d=>{
-let m=map[d];
-html+=`${d} 討伐:${m.b} 青箱:${m.blue} ヒヒ:${m.h}<br>`;
-});
+  let html="";
+  Object.keys(map).sort().reverse().slice(0,7).forEach(d=>{
+    let m=map[d];
+    html+=`${d} 討伐:${m.b} 青箱:${m.blue} ヒヒ:${m.h}<br>`;
+  });
 
-document.getElementById("daily").innerHTML=html;
+  document.getElementById("daily").innerHTML=html;
 }
 
 // ===== 月別 =====
 function renderMonthly(){
-let map={};
-logs.forEach(l=>{
-let m=l.date.slice(0,7);
-if(!map[m]) map[m]={b:0,blue:0,h:0};
-map[m].b++;
-if(l.blue) map[m].blue++;
-if(l.hihi) map[m].h++;
-});
+  let map={};
+  logs.forEach(l=>{
+    let m=l.date.slice(0,7);
+    if(!map[m]) map[m]={b:0,blue:0,h:0};
+    map[m].b++;
+    if(l.blue) map[m].blue++;
+    if(l.hihi) map[m].h++;
+  });
 
-let html="";
-Object.keys(map).sort().forEach(m=>{
-let v=map[m];
-html+=`${m} 討伐:${v.b} 青箱:${v.blue} ヒヒ:${v.h}<br>`;
-});
+  let html="";
+  Object.keys(map).sort().forEach(m=>{
+    let v=map[m];
+    html+=`${m} 討伐:${v.b} 青箱:${v.blue} ヒヒ:${v.h}<br>`;
+  });
 
-document.getElementById("monthly").innerHTML=html;
+  document.getElementById("monthly").innerHTML=html;
 }
 
 // ===== グラフ =====
 function drawChart(){
-let map={};
+  let map={};
 
-logs.forEach(l=>{
-if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
-map[l.date].b++;
-if(l.blue) map[l.date].blue++;
-if(l.hihi) map[l.date].h++;
-});
+  logs.forEach(l=>{
+    if(!map[l.date]) map[l.date]={b:0,blue:0,h:0};
+    map[l.date].b++;
+    if(l.blue) map[l.date].blue++;
+    if(l.hihi) map[l.date].h++;
+  });
 
-let labels=Object.keys(map).sort();
-let b=labels.map(d=>map[d].b);
-let blue=labels.map(d=>map[d].blue);
-let h=labels.map(d=>map[d].h);
+  let labels=Object.keys(map).sort();
+  let b=labels.map(d=>map[d].b);
+  let blue=labels.map(d=>map[d].blue);
+  let h=labels.map(d=>map[d].h);
 
-if(chart) chart.destroy();
+  if(chart) chart.destroy();
 
-chart=new Chart(document.getElementById("chart"),{
-data:{
-labels,
-datasets:[
-{type:"bar",label:"討伐",data:b,yAxisID:"y",backgroundColor:"rgba(255,80,80,0.7)",barThickness:6},
-{type:"line",label:"青箱",data:blue,yAxisID:"y1",borderColor:"#3b82f6"},
-{type:"line",label:"ヒヒ",data:h,yAxisID:"y1",borderColor:"gold"}
-]
-},
-options:{
-responsive:true,
-scales:{
-y:{position:"left",beginAtZero:true},
-y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false}}
+  chart=new Chart(document.getElementById("chart"),{
+    data:{
+      labels,
+      datasets:[
+        {
+          type:"bar",
+          label:"討伐",
+          data:b,
+          yAxisID:"y",
+          backgroundColor:"rgba(255,80,80,0.7)",
+          barThickness:6
+        },
+        {
+          type:"line",
+          label:"青箱",
+          data:blue,
+          yAxisID:"y1",
+          borderColor:"#3b82f6",
+          tension:0.3
+        },
+        {
+          type:"line",
+          label:"ヒヒ",
+          data:h,
+          yAxisID:"y1",
+          borderColor:"gold",
+          tension:0.3
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        y:{position:"left",beginAtZero:true},
+        y1:{
+          position:"right",
+          beginAtZero:true,
+          grid:{drawOnChartArea:false}
+        }
+      }
+    }
+  });
 }
-}
-});
-}
 
-// ===== UI =====
-function toggleDark(){document.body.classList.toggle("dark");}
+// ===== ダーク保存 =====
+function toggleDark(){
+  document.body.classList.toggle("dark");
+  localStorage.setItem("darkMode",
+    document.body.classList.contains("dark")?"1":"0");
+}
 
 // ===== 更新 =====
 function updateAll(){
-renderSince();
-renderDaily();
-renderMonthly();
-drawChart();
+  renderSince();
+  renderDaily();
+  renderMonthly();
+  drawChart();
 }
 
 // ===== 起動 =====
 window.addEventListener("load",()=>{
-setToday();
-updateAll();
+  if(localStorage.getItem("darkMode")==="1"){
+    document.body.classList.add("dark");
+  }
+  setToday();
+  updateAll();
 });
 </script>
 
